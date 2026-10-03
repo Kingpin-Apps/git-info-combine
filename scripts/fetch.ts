@@ -1,6 +1,7 @@
 /**
  * Fetches real activity and prints a summary. Reads tokens from the
- * environment: GIC_GITHUB_TOKEN, GIC_GITLAB_TOKEN and optionally GIC_GITLAB_URL.
+ * environment: GIC_GITHUB_TOKEN, GIC_GITLAB_TOKEN, and optionally GIC_GITLAB_URL
+ * and GIC_INCLUDE_ORG_REPOS=false.
  * Writes the cache and activity JSON to .out/ so a second run is incremental.
  *
  *   bun run fetch
@@ -16,6 +17,7 @@ const { activity, cache: next } = await collect({
   githubToken: process.env.GIC_GITHUB_TOKEN,
   gitlabToken: process.env.GIC_GITLAB_TOKEN,
   gitlabUrl: process.env.GIC_GITLAB_URL,
+  includeOrgRepos: process.env.GIC_INCLUDE_ORG_REPOS !== "false",
   cache,
 });
 const seconds = ((performance.now() - started) / 1000).toFixed(1);

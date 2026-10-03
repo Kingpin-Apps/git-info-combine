@@ -41,6 +41,19 @@ describe("fetchGitHub", () => {
     ]);
   });
 
+  test("includes org repos by default and can be limited to owned repos", async () => {
+    const repoAffiliations = async (includeOrgRepos?: boolean) => {
+      const { fetch, calls } = mockFetch(githubRoute);
+      await fetchGitHub({ token: "t", fetch, now: NOW, includeOrgRepos });
+      return calls.filter((call) => call.body.query.includes("repositories(")).map((call) => call.body.variables.affiliations);
+    };
+    expect(await repoAffiliations()).toEqual([
+      ["OWNER", "ORGANIZATION_MEMBER"],
+      ["OWNER", "ORGANIZATION_MEMBER"],
+    ]);
+    expect(await repoAffiliations(false)).toEqual([["OWNER"], ["OWNER"]]);
+  });
+
   test("reuses complete years from the cache", async () => {
     const first = await fetchGitHub({ token: "t", fetch: mockFetch(githubRoute).fetch, now: NOW });
     const { fetch, calls } = mockFetch(githubRoute);

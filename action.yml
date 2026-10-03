@@ -15,6 +15,10 @@ inputs:
     description: Base URL of the GitLab instance. Set this for self-hosted GitLab.
     required: false
     default: https://gitlab.com
+  include-org-repos:
+    description: Count repos in GitHub organisations you belong to towards languages and stars, not only repos you own.
+    required: false
+    default: "true"
   wakatime-api-key:
     description: WakaTime API key, needed only for the wakatime card.
     required: false

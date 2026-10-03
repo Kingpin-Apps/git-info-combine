@@ -23,6 +23,11 @@ export interface GitHubOptions extends HttpOptions {
   apiUrl?: string;
   now?: Date;
   cache?: GitHubCache;
+  /**
+   * Count repos in organisations the user belongs to towards languages and
+   * stars, not only repos the user owns. Defaults to true.
+   */
+  includeOrgRepos?: boolean;
 }
 
 export interface GitHubResult {
@@ -55,9 +60,9 @@ const YEAR_QUERY = `query ($from: DateTime!, $to: DateTime!) {
   }
 }`;
 
-const REPOS_QUERY = `query ($after: String) {
+const REPOS_QUERY = `query ($after: String, $affiliations: [RepositoryAffiliation]) {
   viewer {
-    repositories(first: 100, after: $after, ownerAffiliations: [OWNER], isFork: false) {
+    repositories(first: 100, after: $after, ownerAffiliations: $affiliations, isFork: false) {
       pageInfo { hasNextPage endCursor }
       nodes {
         name
@@ -141,9 +146,10 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
   const languages: Record<string, LanguageStat> = {};
   const repos = { public: 0, private: 0 };
   let stars = 0;
+  const affiliations = options.includeOrgRepos === false ? ["OWNER"] : ["OWNER", "ORGANIZATION_MEMBER"];
   let after: string | null = null;
   do {
-    const data: ReposData = await graphql<ReposData>(REPOS_QUERY, { after });
+    const data: ReposData = await graphql<ReposData>(REPOS_QUERY, { after, affiliations });
     const page = data.viewer.repositories;
     for (const repo of page.nodes) {
       if (repo.isPrivate) {

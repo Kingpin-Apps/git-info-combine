@@ -17,6 +17,8 @@ export interface CollectOptions extends HttpOptions {
   githubToken?: string;
   gitlabToken?: string;
   gitlabUrl?: string;
+  /** See GitHubOptions.includeOrgRepos. */
+  includeOrgRepos?: boolean;
   cache?: Cache;
   now?: Date;
 }
