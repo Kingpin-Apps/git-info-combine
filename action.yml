@@ -4,9 +4,11 @@ author: Kingpin Apps
 branding:
   icon: activity
   color: purple
+
 inputs:
+  # Sources
   github-token:
-    description: GitHub personal access token for the profile owner. The default GITHUB_TOKEN cannot read activity in other repos.
+    description: Personal access token for the profile owner (classic, with repo, read:org and read:user). The default GITHUB_TOKEN cannot read your activity in other repos.
     required: false
   gitlab-token:
     description: GitLab personal access token with the read_api scope.
@@ -19,17 +21,109 @@ inputs:
     description: Count repos in GitHub organisations you belong to towards languages and stars, not only repos you own.
     required: false
     default: "true"
+  exclude-repos:
+    description: Repos or projects (name or owner/name) to leave out of languages and stars. This file is public, so naming a private repo here reveals its name.
+    required: false
   wakatime-api-key:
     description: WakaTime API key, needed only for the wakatime card.
     required: false
+
+  # Output
   cards:
     description: "Cards to build, comma-separated: heatmap, stats, languages, wakatime, pins, gists, or all."
     required: false
     default: all
   output-dir:
-    description: Folder the SVG cards are written to.
+    description: Folder the cards and the cache are written to.
     required: false
     default: git-info-combine
+  commit:
+    description: Commit and push the cards. Needs actions/checkout and contents write permission.
+    required: false
+    default: "true"
+  commit-message:
+    description: Message for the commit.
+    required: false
+    default: "chore: update git-info-combine cards"
+
+  # Look, for every card
+  theme:
+    description: auto (follows light or dark mode, and also writes -light and -dark files) or any GitHub Stats Extended theme.
+    required: false
+    default: auto
+  hide-title:
+    description: Hide card titles.
+    required: false
+  hide-border:
+    description: Hide card borders.
+    required: false
+  border-radius:
+    description: Corner radius in pixels.
+    required: false
+  title-color:
+    description: Title colour (hex).
+    required: false
+  icon-color:
+    description: Icon colour (hex).
+    required: false
+  text-color:
+    description: Text colour (hex).
+    required: false
+  bg-color:
+    description: Background colour (hex).
+    required: false
+  border-color:
+    description: Border colour (hex).
+    required: false
+  github-color:
+    description: Colour for GitHub activity (hex). Default #40c463.
+    required: false
+  gitlab-color:
+    description: Colour for GitLab activity (hex). Default #fc6d26.
+    required: false
+
+  # Stats card
+  name:
+    description: Name in the stats card title. Defaults to your GitHub login, else your GitLab one.
+    required: false
+  stats-hide:
+    description: "Stats to hide, comma-separated: stars, commits, pullRequests, issues, reviews, contributedTo."
+    required: false
+  hide-rank:
+    description: Hide the rank circle.
+    required: false
+  show-hosts:
+    description: Show which hosts the numbers come from.
+    required: false
+  number-format:
+    description: short (12k) or long (12,014).
+    required: false
+
+  # Languages card
+  languages-layout:
+    description: normal or compact.
+    required: false
+  languages-count:
+    description: How many languages to show. Default 5 (normal) or 6 (compact).
+    required: false
+  languages-hide:
+    description: Languages to leave out, comma-separated.
+    required: false
+
+  # Heatmap card
+  heatmap-range:
+    description: last-year or all.
+    required: false
+  heatmap-mode:
+    description: hosts (each day split by host colour) or single (one colour).
+    required: false
+
+outputs:
+  files:
+    description: The files written, one per line.
+  committed:
+    description: true if the cards changed and were committed.
+
 runs:
   using: node24
   main: dist/index.js
