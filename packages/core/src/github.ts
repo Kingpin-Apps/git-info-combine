@@ -1,6 +1,6 @@
 import { request, type HttpOptions } from "./http.ts";
-import { emptyTotals, type DateKey, type HostActivity, type LanguageStat } from "./model.ts";
-import { isExcluded, SensitiveNames } from "./privacy.ts";
+import { addRepoLanguages, emptyTotals, type DateKey, type HostActivity, type LanguageStat } from "./model.ts";
+import { isExcluded, opaqueId, SensitiveNames } from "./privacy.ts";
 
 export interface GitHubYear {
   /** True once the year had ended when it was fetched, so it never changes again. */
@@ -30,12 +30,16 @@ export interface GitHubOptions extends HttpOptions {
   includeOrgRepos?: boolean;
   /** Repo names or `owner/name` paths to leave out of languages and stars. */
   excludeRepos?: string[];
+  /** Count a repo that bundles WordPress core as one PHP repo. Defaults to true. */
+  detectWordPress?: boolean;
 }
 
 export interface GitHubResult {
   activity: HostActivity;
   cache: GitHubCache;
   sensitive: SensitiveNames;
+  /** Hashed latest commit of each repo's default branch, for spotting GitLab mirrors. Never written out. */
+  heads: Set<string>;
 }
 
 const VIEWER_QUERY = `query {
@@ -71,6 +75,8 @@ const REPOS_QUERY = `query ($after: String, $affiliations: [RepositoryAffiliatio
         nameWithOwner
         isPrivate
         stargazerCount
+        defaultBranchRef { target { oid } }
+        wordpress: object(expression: "HEAD:wp-includes/version.php") { id }
         languages(first: 20, orderBy: { field: SIZE, direction: DESC }) {
           edges { size node { name color } }
         }
@@ -112,6 +118,8 @@ interface ReposData {
         nameWithOwner: string;
         isPrivate: boolean;
         stargazerCount: number;
+        defaultBranchRef: { target: { oid: string } | null } | null;
+        wordpress: { id: string } | null;
         languages: { edges: { size: number; node: { name: string; color: string | null } }[] };
       }[];
     };
@@ -147,6 +155,7 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
 
   const languages: Record<string, LanguageStat> = {};
   const repos = { public: 0, private: 0 };
+  const heads = new Set<string>();
   let stars = 0;
   const affiliations = options.includeOrgRepos === false ? ["OWNER"] : ["OWNER", "ORGANIZATION_MEMBER"];
   let after: string | null = null;
@@ -162,11 +171,13 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
         repos.public++;
       }
       stars += repo.stargazerCount;
-      for (const { size, node } of repo.languages.edges) {
-        const stat = (languages[node.name] ??= { size: 0, repos: 0, color: node.color });
-        stat.size += size;
-        stat.repos++;
-      }
+      const head = repo.defaultBranchRef?.target?.oid;
+      if (head) heads.add(opaqueId("commit", head));
+      addRepoLanguages(
+        languages,
+        Object.fromEntries(repo.languages.edges.map(({ size, node }) => [node.name, { size, color: node.color }])),
+        options.detectWordPress !== false && Boolean(repo.wordpress),
+      );
     }
     after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
   } while (after);
@@ -189,6 +200,7 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
     activity: { host: "github", login: viewer.login, days, totals, languages, repos },
     cache: { login: viewer.login, years },
     sensitive,
+    heads,
   };
 }
 

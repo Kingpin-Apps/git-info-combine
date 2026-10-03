@@ -24,6 +24,13 @@ inputs:
   exclude-repos:
     description: Repos or projects (name or owner/name) to leave out of languages and stars. This file is public, so naming a private repo here reveals its name.
     required: false
+  gitlab-mirrors:
+    description: GitLab projects (group/project) that mirror GitHub repos, so they count once. Mirrors whose latest commit matches a GitHub repo are found without this. This file is public, so naming a private project here reveals its name.
+    required: false
+  detect-wordpress:
+    description: Count a repo that bundles WordPress core as one PHP repo, rather than counting WordPress's own code as yours.
+    required: false
+    default: "true"
   wakatime-api-key:
     description: WakaTime API key, needed only for the wakatime card. Only languages are used; project names are dropped.
     required: false
@@ -121,6 +128,9 @@ inputs:
     required: false
   languages-hide:
     description: Languages to leave out, comma-separated.
+    required: false
+  languages-weighting:
+    description: repo (every repo counts once, split by its languages) or size (bytes, so big repos dominate). Default repo.
     required: false
 
   # Heatmap card

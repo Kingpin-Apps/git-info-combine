@@ -18,9 +18,42 @@ export interface Totals {
 export interface LanguageStat {
   /** Approximate size in bytes. */
   size: number;
+  /**
+   * The language's share of each repo, added up: a repo that is 75% Swift adds
+   * 0.75. Every repo counts once, whatever its size.
+   */
+  weight: number;
   /** Number of repos or projects that use the language. */
   repos: number;
   color: string | null;
+}
+
+/**
+ * Adds one repo's languages to a running total. `sizes` are bytes or any
+ * unit proportional to them. A WordPress site counts as one PHP repo, since
+ * the bundled WordPress core is not the user's code.
+ */
+export function addRepoLanguages(
+  languages: Record<string, LanguageStat>,
+  sizes: Record<string, { size: number; color: string | null }>,
+  wordpress = false,
+): void {
+  if (wordpress) {
+    const php = (languages.PHP ??= { size: 0, weight: 0, repos: 0, color: null });
+    php.weight += 1;
+    php.repos += 1;
+    return;
+  }
+  const total = Object.values(sizes).reduce((sum, { size }) => sum + size, 0);
+  if (total <= 0) return;
+  for (const [name, { size, color }] of Object.entries(sizes)) {
+    if (size <= 0) continue;
+    const stat = (languages[name] ??= { size: 0, weight: 0, repos: 0, color });
+    stat.size += size;
+    stat.weight += size / total;
+    stat.repos += 1;
+    stat.color ??= color;
+  }
 }
 
 /**

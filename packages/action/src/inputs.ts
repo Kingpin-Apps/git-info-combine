@@ -22,6 +22,8 @@ export interface Config {
   gitlabUrl?: string;
   includeOrgRepos: boolean;
   excludeRepos: string[];
+  gitlabMirrors: string[];
+  detectWordPress: boolean;
   cards: CardName[];
   outputDir: string;
   commit: boolean;
@@ -96,6 +98,8 @@ export function readConfig(getInput: GetInput): Config {
     gitlabUrl: text("gitlab-url"),
     includeOrgRepos: bool("include-org-repos", true),
     excludeRepos: list("exclude-repos"),
+    gitlabMirrors: list("gitlab-mirrors"),
+    detectWordPress: bool("detect-wordpress", true),
     cards: parseCards(getInput("cards")),
     outputDir: text("output-dir") ?? "git-info-combine",
     commit: bool("commit", true),
@@ -115,6 +119,7 @@ export function readConfig(getInput: GetInput): Config {
       layout: choice("languages-layout", ["normal", "compact"] as const),
       count: number("languages-count"),
       hide: list("languages-hide"),
+      weighting: choice("languages-weighting", ["repo", "size"] as const),
     },
     heatmap: {
       ...common,

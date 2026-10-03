@@ -63,14 +63,17 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
 
   // collect() has already checked that neither of these holds a private name.
   // The heatmap, stats and languages cards are drawn only from the activity.
-  const { activity, cache: nextCache } = await (deps.collect ?? collect)({
+  const { activity, mirrored, cache: nextCache } = await (deps.collect ?? collect)({
     githubToken: config.githubToken,
     gitlabToken: config.gitlabToken,
     gitlabUrl: config.gitlabUrl,
     includeOrgRepos: config.includeOrgRepos,
     excludeRepos: config.excludeRepos,
+    gitlabMirrors: config.gitlabMirrors,
+    detectWordPress: config.detectWordPress,
     cache,
   });
+  if (mirrored > 0) logger.info(`${mirrored} GitLab projects mirror GitHub repos and are counted once.`);
   for (const host of activity.hosts) {
     logger.info(
       `${host.host}: ${host.totals.contributions} contributions, ${host.repos.public} public and ${host.repos.private} private repos.`,

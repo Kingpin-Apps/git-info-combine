@@ -13,7 +13,7 @@ const cacheFile = Bun.file(".out/cache.json");
 const cache = parseCache((await cacheFile.exists()) ? await cacheFile.text() : null);
 
 const started = performance.now();
-const { activity, cache: next } = await collect({
+const { activity, mirrored, cache: next } = await collect({
   githubToken: process.env.GIC_GITHUB_TOKEN,
   gitlabToken: process.env.GIC_GITLAB_TOKEN,
   gitlabUrl: process.env.GIC_GITLAB_URL,
@@ -29,16 +29,24 @@ await Bun.write(".out/activity.json", `${JSON.stringify(activity, null, 2)}\n`);
 const dates = Object.keys(activity.days);
 console.log(`Fetched in ${seconds}s (${cache ? "incremental" : "full"}).`);
 console.log(`Days with activity: ${dates.length}, from ${dates[0]} to ${dates.at(-1)}`);
+console.log(`GitLab projects counted once as mirrors of GitHub repos: ${mirrored}`);
 console.table(
   Object.fromEntries([
     ...activity.hosts.map((host) => [`${host.host} (${host.login})`, { ...host.totals, ...prefix("repos", host.repos) }]),
     ["combined", activity.totals],
   ]),
 );
+const totalWeight = Object.values(activity.languages).reduce((sum, stat) => sum + stat.weight, 0);
+const totalSize = Object.values(activity.languages).reduce((sum, stat) => sum + stat.size, 0);
 const languages = Object.entries(activity.languages)
-  .sort(([, a], [, b]) => b.size - a.size)
-  .slice(0, 8)
-  .map(([name, stat]) => ({ name, kb: Math.round(stat.size / 1024), repos: stat.repos }));
+  .sort(([, a], [, b]) => b.weight - a.weight)
+  .slice(0, 10)
+  .map(([name, stat]) => ({
+    name,
+    "per repo %": ((stat.weight / totalWeight) * 100).toFixed(1),
+    "by size %": ((stat.size / totalSize) * 100).toFixed(1),
+    repos: stat.repos,
+  }));
 console.table(languages);
 
 function prefix(name: string, record: Record<string, number>) {

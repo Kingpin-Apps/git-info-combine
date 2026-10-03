@@ -13,10 +13,10 @@ describe("collect", () => {
     const { activity } = await collect({ githubToken: "a", gitlabToken: "b", fetch: route(), now: NOW });
     expect(activity.hosts.map((host) => host.host)).toEqual(["github", "gitlab"]);
     expect(activity.totals.contributions).toBe(30);
-    expect(activity.totals.stars).toBe(8);
+    expect(activity.totals.stars).toBe(10);
     expect(activity.days["2026-10-01"]).toBe(5);
     expect(Object.keys(activity.days)).toEqual([...Object.keys(activity.days)].sort());
-    expect(activity.languages.Swift).toEqual({ size: 5500, repos: 2, color: "#F05138" });
+    expect(activity.languages.Swift).toEqual({ size: 5500, weight: 1 + 1 / 3, repos: 2, color: "#F05138" });
     expect(activity.generatedAt).toBe(NOW.toISOString());
   });
 
@@ -30,8 +30,21 @@ describe("collect", () => {
     });
     const output = JSON.stringify({ activity: result.activity, cache: result.cache }).toLowerCase();
     for (const name of PRIVATE_NAMES) expect(output).not.toContain(name.toLowerCase());
-    // GitHub: name and owner/name. GitLab: name (same as its path), both full paths, the hostname.
-    expect(result.sensitive.size).toBe(6);
+    // GitHub: name and owner/name. GitLab, for each of two private projects: name (same as
+    // its path) and both full paths. Plus the hostname.
+    expect(result.sensitive.size).toBe(9);
+  });
+
+  test("named GitLab mirrors are counted once and reported", async () => {
+    const result = await collect({
+      githubToken: "a",
+      gitlabToken: "b",
+      gitlabMirrors: ["acme-corp/client-portal-x"],
+      fetch: route(),
+      now: NOW,
+    });
+    expect(result.mirrored).toBe(1);
+    expect(result.activity.hosts[1]!.totals.commits).toBe(12);
   });
 
   test("the cache round-trips", async () => {
@@ -50,8 +63,8 @@ describe("collect", () => {
       now: NOW,
       excludeRepos: ["octo/dotfiles", "OPEN-WIDGET"],
     });
-    expect(activity.totals.stars).toBe(1);
-    expect(Object.keys(activity.languages).sort()).toEqual(["CSS", "Swift", "TypeScript"]);
+    expect(activity.totals.stars).toBe(3);
+    expect(Object.keys(activity.languages).sort()).toEqual(["CSS", "PHP", "Swift", "TypeScript"]);
   });
 
   test("needs at least one token", async () => {

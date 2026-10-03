@@ -13,7 +13,7 @@ const host: HostActivity = {
   login: "octo",
   days: { "2026-10-01": 3 },
   totals: { contributions: 3, commits: 3, pullRequests: 0, issues: 0, reviews: 0, stars: 1, followers: 0, contributedTo: 1 },
-  languages: { Swift: { size: 100, repos: 1, color: "#F05138" } },
+  languages: { Swift: { size: 100, weight: 1, repos: 1, color: "#F05138" } },
   repos: { public: 1, private: 0 },
 };
 
@@ -21,7 +21,7 @@ function fakeCollect(seen: CollectOptions[]) {
   return async (options: CollectOptions) => {
     seen.push(options);
     const cache: Cache = { version: 1 };
-    return { activity: combine([host], new Date("2026-10-02T00:00:00Z")), cache, sensitive: new SensitiveNames() };
+    return { activity: combine([host], new Date("2026-10-02T00:00:00Z")), mirrored: 0, cache, sensitive: new SensitiveNames() };
   };
 }
 

@@ -8,6 +8,11 @@ export interface LanguagesCardOptions extends CardOptions {
   count?: number;
   /** Language names to leave out. */
   hide?: string[];
+  /**
+   * `repo` (the default) counts every repo once, split by its languages.
+   * `size` weighs languages by bytes, so big repos dominate.
+   */
+  weighting?: "repo" | "size";
 }
 
 export interface LanguageShare {
@@ -17,18 +22,24 @@ export interface LanguageShare {
   percent: number;
 }
 
-/** The top languages by size, as shares of the languages shown, like GitHub Stats Extended. */
-export function topLanguages(activity: CombinedActivity, count: number, hide: string[] = []): LanguageShare[] {
+/** The top languages, as shares of the languages shown, like GitHub Stats Extended. */
+export function topLanguages(
+  activity: CombinedActivity,
+  count: number,
+  hide: string[] = [],
+  weighting: "repo" | "size" = "repo",
+): LanguageShare[] {
   const hidden = new Set(hide.map((name) => name.trim().toLowerCase()));
+  const value = (stat: { size: number; weight: number }) => (weighting === "size" ? stat.size : stat.weight);
   const top = Object.entries(activity.languages)
-    .filter(([name, stat]) => !hidden.has(name.toLowerCase()) && stat.size > 0)
-    .sort(([, a], [, b]) => b.size - a.size)
+    .filter(([name, stat]) => !hidden.has(name.toLowerCase()) && value(stat) > 0)
+    .sort(([, a], [, b]) => value(b) - value(a))
     .slice(0, count);
-  const total = top.reduce((sum, [, stat]) => sum + stat.size, 0);
+  const total = top.reduce((sum, [, stat]) => sum + value(stat), 0);
   return top.map(([name, stat]) => ({
     name,
     color: stat.color ?? LANGUAGE_COLORS[name] ?? "#858585",
-    percent: total ? (stat.size / total) * 100 : 0,
+    percent: total ? (value(stat) / total) * 100 : 0,
   }));
 }
 
@@ -37,7 +48,7 @@ const BAR_WIDTH = WIDTH - 50;
 
 export function renderLanguagesCard(activity: CombinedActivity, options: LanguagesCardOptions = {}): string {
   const layout = options.layout ?? "normal";
-  const languages = topLanguages(activity, options.count ?? (layout === "compact" ? 6 : 5), options.hide);
+  const languages = topLanguages(activity, options.count ?? (layout === "compact" ? 6 : 5), options.hide, options.weighting);
   const top = titleOffset(options);
 
   let body: string;

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { fetchGitHub } from "../src/github.ts";
 import { githubRoute, NOW, PRIVATE_NAMES } from "./fixtures.ts";
 import { json, mockFetch, noSleep } from "./mock.ts";
+import { opaqueId } from "../src/privacy.ts";
 
 describe("fetchGitHub", () => {
   test("adds up every year since the account was created", async () => {
@@ -22,8 +23,8 @@ describe("fetchGitHub", () => {
     });
     expect(activity.repos).toEqual({ public: 1, private: 1 });
     expect(activity.languages).toEqual({
-      Swift: { size: 5500, repos: 2, color: "#F05138" },
-      Shell: { size: 1000, repos: 1, color: "#89e051" },
+      Swift: { size: 5500, weight: 1 + 1 / 3, repos: 2, color: "#F05138" },
+      Shell: { size: 1000, weight: 2 / 3, repos: 1, color: "#89e051" },
     });
     expect(cache.years["2025"]!.complete).toBe(true);
     expect(cache.years["2026"]!.complete).toBe(false);
@@ -52,6 +53,40 @@ describe("fetchGitHub", () => {
       ["OWNER", "ORGANIZATION_MEMBER"],
     ]);
     expect(await repoAffiliations(false)).toEqual([["OWNER"], ["OWNER"]]);
+  });
+
+  test("returns hashed default-branch heads for spotting mirrors", async () => {
+    const { heads } = await fetchGitHub({ token: "t", fetch: mockFetch(githubRoute).fetch, now: NOW });
+    expect([...heads].sort()).toEqual([opaqueId("commit", "eee555"), opaqueId("commit", "ccc333")].sort());
+  });
+
+  test("a repo that bundles WordPress core counts as one PHP repo", async () => {
+    const route = mockFetch((call) => {
+      const response = githubRoute(call);
+      if (!call.body.query.includes("repositories(")) return response;
+      return json({
+        data: {
+          viewer: {
+            repositories: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [
+                {
+                  name: "site",
+                  nameWithOwner: "octo/site",
+                  isPrivate: false,
+                  stargazerCount: 0,
+                  defaultBranchRef: null,
+                  wordpress: { id: "x" },
+                  languages: { edges: [{ size: 9_000_000, node: { name: "PHP", color: "#4F5D95" } }, { size: 3_000_000, node: { name: "JavaScript", color: "#f1e05a" } }] },
+                },
+              ],
+            },
+          },
+        },
+      });
+    });
+    const { activity } = await fetchGitHub({ token: "t", fetch: route.fetch, now: NOW });
+    expect(activity.languages).toEqual({ PHP: { size: 0, weight: 1, repos: 1, color: null } });
   });
 
   test("reuses complete years from the cache", async () => {

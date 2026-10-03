@@ -10,8 +10,9 @@ export function combine(hosts: HostActivity[], now = new Date()): CombinedActivi
     for (const [date, count] of Object.entries(host.days)) days[date] = (days[date] ?? 0) + count;
     for (const key of Object.keys(totals) as (keyof Totals)[]) totals[key] += host.totals[key];
     for (const [name, stat] of Object.entries(host.languages)) {
-      const combined = (languages[name] ??= { size: 0, repos: 0, color: null });
+      const combined = (languages[name] ??= { size: 0, weight: 0, repos: 0, color: null });
       combined.size += stat.size;
+      combined.weight += stat.weight;
       combined.repos += stat.repos;
       combined.color ??= stat.color;
     }

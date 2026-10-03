@@ -21,12 +21,18 @@ export interface CollectOptions extends HttpOptions {
   includeOrgRepos?: boolean;
   /** Repos or projects to leave out of languages and stars, on any host. */
   excludeRepos?: string[];
+  /** GitLab project paths that mirror GitHub repos, on top of the ones spotted automatically. */
+  gitlabMirrors?: string[];
+  /** Count a repo that bundles WordPress core as one PHP repo. Defaults to true. */
+  detectWordPress?: boolean;
   cache?: Cache;
   now?: Date;
 }
 
 export interface Collected {
   activity: CombinedActivity;
+  /** GitLab projects counted once because they mirror a GitHub repo. */
+  mirrored: number;
   cache: Cache;
   /** Names that must never be written out. Kept in memory only. */
   sensitive: SensitiveNames;
@@ -35,14 +41,17 @@ export interface Collected {
 /** Fetches every configured host, combines the results and checks no private name got through. */
 export async function collect(options: CollectOptions): Promise<Collected> {
   const hosts: HostActivity[] = [];
+  let mirrored = 0;
   const cache: Cache = { version: CACHE_VERSION };
   const sensitive = new SensitiveNames();
+  let githubHeads: Set<string> | undefined;
 
   if (options.githubToken) {
     const result = await fetchGitHub({ ...options, token: options.githubToken, cache: options.cache?.github });
     hosts.push(result.activity);
     cache.github = result.cache;
     sensitive.merge(result.sensitive);
+    githubHeads = result.heads;
   }
 
   if (options.gitlabToken) {
@@ -51,8 +60,11 @@ export async function collect(options: CollectOptions): Promise<Collected> {
       token: options.gitlabToken,
       baseUrl: options.gitlabUrl,
       cache: options.cache?.gitlab,
+      githubHeads,
+      mirrors: options.gitlabMirrors,
     });
     hosts.push(result.activity);
+    mirrored = result.mirrored;
     cache.gitlab = result.cache;
     sensitive.merge(result.sensitive);
   }
@@ -62,7 +74,7 @@ export async function collect(options: CollectOptions): Promise<Collected> {
   const activity = combine(hosts, options.now);
   sensitive.assertAbsent(activity, "the activity data");
   sensitive.assertAbsent(cache, "the cache");
-  return { activity, cache, sensitive };
+  return { activity, mirrored, cache, sensitive };
 }
 
 /** Reads a cache file's text. Anything unreadable or from another version starts fresh. */

@@ -7,6 +7,8 @@ export const PRIVATE_NAMES = [
   "client-portal-x",
   "acme-corp/client-portal-x",
   "Acme Corp / Client Portal X",
+  "hidden-wp-site",
+  "acme-corp/hidden-wp-site",
   "git.secretcorp.internal",
 ];
 
@@ -72,6 +74,8 @@ export const githubRoute: Route = (call: Call) => {
                     nameWithOwner: "octo/topsecret-banking-core",
                     isPrivate: true,
                     stargazerCount: 0,
+                    defaultBranchRef: { target: { oid: "eee555" } },
+                    wordpress: null,
                     languages: { edges: [{ size: 5000, node: { name: "Swift", color: "#F05138" } }] },
                   },
                 ]
@@ -81,6 +85,8 @@ export const githubRoute: Route = (call: Call) => {
                     nameWithOwner: "octo/dotfiles",
                     isPrivate: false,
                     stargazerCount: 3,
+                    defaultBranchRef: { target: { oid: "ccc333" } },
+                    wordpress: null,
                     languages: {
                       edges: [
                         { size: 1000, node: { name: "Shell", color: "#89e051" } },
@@ -108,7 +114,10 @@ export const GITLAB_EVENTS = [
   { action_name: "commented on", target_type: "Note", created_at: "2026-10-02T09:30:00Z", project_id: 2, note: { noteable_type: "Issue" } },
 ];
 
-const GITLAB_PROJECTS = [
+const maintainer = { project_access: { access_level: 40 }, group_access: null };
+const ACTIVE = "2026-10-01T00:00:00Z";
+
+export const GITLAB_PROJECTS = [
   {
     id: 1,
     name: "client-portal-x",
@@ -117,6 +126,9 @@ const GITLAB_PROJECTS = [
     name_with_namespace: "Acme Corp / Client Portal X",
     visibility: "private",
     star_count: 1,
+    default_branch: "main",
+    last_activity_at: ACTIVE,
+    permissions: maintainer,
     statistics: { repository_size: 10_000 },
   },
   {
@@ -127,6 +139,9 @@ const GITLAB_PROJECTS = [
     name_with_namespace: "octo / open-widget",
     visibility: "public",
     star_count: 4,
+    default_branch: "main",
+    last_activity_at: ACTIVE,
+    permissions: maintainer,
     statistics: { repository_size: 2_000 },
   },
   {
@@ -137,13 +152,41 @@ const GITLAB_PROJECTS = [
     name_with_namespace: "octo / forked-thing",
     visibility: "public",
     star_count: 100,
+    default_branch: "main",
+    last_activity_at: ACTIVE,
+    permissions: maintainer,
     forked_from_project: { id: 99 },
   },
+  {
+    id: 4,
+    name: "hidden-wp-site",
+    path: "hidden-wp-site",
+    path_with_namespace: "acme-corp/hidden-wp-site",
+    name_with_namespace: "Acme Corp / hidden-wp-site",
+    visibility: "private",
+    star_count: 2,
+    default_branch: "main",
+    last_activity_at: ACTIVE,
+    permissions: maintainer,
+    statistics: { repository_size: 500_000_000 },
+  },
 ];
+
+const GITLAB_CONTRIBUTORS: Record<string, { name: string; email: string; commits: number }[]> = {
+  "1": [
+    { name: "Octo Cat", email: "octo@example.com", commits: 12 },
+    { name: "Someone Else", email: "else@example.com", commits: 50 },
+  ],
+  "2": [{ name: "Octo C.", email: "OCTO@work.example", commits: 5 }],
+  "4": [{ name: "Octo Cat", email: "old@laptop.local", commits: 7 }],
+};
+
+const GITLAB_HEADS: Record<string, string> = { "1": "aaa111", "2": "bbb222", "4": "ddd444" };
 
 const GITLAB_LANGUAGES: Record<string, Record<string, number>> = {
   "1": { TypeScript: 75, CSS: 25 },
   "2": { Python: 100 },
+  "4": { PHP: 70, JavaScript: 20, CSS: 10 },
 };
 
 /** A GitLab instance at `baseUrl` that serves events in pages of `pageSize`. */
@@ -153,7 +196,8 @@ export function gitlabRoute(baseUrl = "https://gitlab.com", events = GITLAB_EVEN
     if (!call.url.href.startsWith(api)) return undefined;
     const path = call.url.pathname.slice(new URL(api).pathname.length);
 
-    if (path === "/user") return json({ id: 42, username: "octo", followers: 2 });
+    if (path === "/user") return json({ id: 42, username: "octo", name: "Octo Cat", email: "octo@example.com", followers: 2 });
+    if (path === "/user/emails") return json([{ email: "octo@work.example" }]);
 
     if (path === "/events") {
       const after = call.url.searchParams.get("after");
@@ -168,6 +212,12 @@ export function gitlabRoute(baseUrl = "https://gitlab.com", events = GITLAB_EVEN
 
     const languages = path.match(/^\/projects\/(\d+)\/languages$/);
     if (languages) return json(GITLAB_LANGUAGES[languages[1]!] ?? {});
+    const contributors = path.match(/^\/projects\/(\d+)\/repository\/contributors$/);
+    if (contributors) return json(GITLAB_CONTRIBUTORS[contributors[1]!] ?? [], { "x-next-page": "" });
+    const commits = path.match(/^\/projects\/(\d+)\/repository\/commits$/);
+    if (commits) return json([{ id: GITLAB_HEADS[commits[1]!] }]);
+    const file = path.match(/^\/projects\/(\d+)\/repository\/files\/wp-includes%2Fversion\.php$/);
+    if (file) return new Response(null, { status: file[1] === "4" ? 200 : 404 });
     return undefined;
   };
 }

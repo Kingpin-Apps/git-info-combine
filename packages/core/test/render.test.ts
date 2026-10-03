@@ -20,8 +20,8 @@ const github: HostActivity = {
   days: { "2026-09-28": 2, "2026-10-01": 4, "2025-03-01": 1 },
   totals: { contributions: 7, commits: 1500, pullRequests: 30, issues: 10, reviews: 5, stars: 120, followers: 40, contributedTo: 12 },
   languages: {
-    Swift: { size: 6000, repos: 3, color: "#F05138" },
-    Shell: { size: 1000, repos: 1, color: "#89e051" },
+    Swift: { size: 6000, weight: 2.5, repos: 3, color: "#F05138" },
+    Shell: { size: 1000, weight: 0.5, repos: 1, color: "#89e051" },
   },
   repos: { public: 3, private: 1 },
 };
@@ -31,7 +31,7 @@ const gitlab: HostActivity = {
   login: "octo",
   days: { "2026-10-01": 4, "2026-09-30": 1 },
   totals: { contributions: 5, commits: 20, pullRequests: 2, issues: 1, reviews: 0, stars: 3, followers: 0, contributedTo: 4 },
-  languages: { Dart: { size: 3000, repos: 2, color: null }, Swift: { size: 0, repos: 0, color: null } },
+  languages: { Dart: { size: 3000, weight: 2, repos: 2, color: null }, Swift: { size: 0, weight: 0, repos: 0, color: null } },
   repos: { public: 0, private: 2 },
 };
 
@@ -109,21 +109,30 @@ describe("stats card", () => {
 });
 
 describe("languages card", () => {
-  test("shares are of the languages shown, sizes from both hosts", () => {
+  test("by default every repo counts once, across both hosts", () => {
     expect(topLanguages(activity, 5)).toEqual([
-      { name: "Swift", color: "#F05138", percent: 60 },
-      { name: "Dart", color: "#00B4AB", percent: 30 }, // GitLab gives no colour; Linguist's is used
+      { name: "Swift", color: "#F05138", percent: 50 },
+      { name: "Dart", color: "#00B4AB", percent: 40 }, // GitLab gives no colour; Linguist's is used
       { name: "Shell", color: "#89e051", percent: 10 },
     ]);
     expect(topLanguages(activity, 1).map((l) => l.percent)).toEqual([100]);
     expect(topLanguages(activity, 5, ["swift"]).map((l) => l.name)).toEqual(["Dart", "Shell"]);
   });
 
+  test("size weighting uses bytes instead", () => {
+    expect(topLanguages(activity, 5, [], "size").map((l) => [l.name, l.percent])).toEqual([
+      ["Swift", 60],
+      ["Dart", 30],
+      ["Shell", 10],
+    ]);
+  });
+
   test("renders both layouts", () => {
-    expect(renderLanguagesCard(activity)).toContain("60.00%");
+    expect(renderLanguagesCard(activity)).toContain("50.00%");
+    expect(renderLanguagesCard(activity, { weighting: "size" })).toContain("60.00%");
     const compact = renderLanguagesCard(activity, { layout: "compact" });
     expect(compact).toContain('clip-path="url(#bar)"');
-    expect(compact).toContain("Swift 60.00%");
+    expect(compact).toContain("Swift 50.00%");
   });
 
   test("says so when there are no languages", () => {
