@@ -8,11 +8,14 @@ import {
   parseCache,
   parseRef,
   renderHeatmapCard,
+  renderHostSplitCard,
+  renderLayout,
   renderLanguagesCard,
   renderShowcaseCard,
   renderStatsCard,
   renderWakaTimeCard,
   svgHeight,
+  type CardName,
   type CardOptions,
   type Collected,
   type CollectOptions,
@@ -48,6 +51,8 @@ export const CACHE_FILE = "cache.json";
 
 /** A card to write, drawn with extra options such as a theme or a minimum height. */
 interface Card {
+  /** The card name it came from, for the layout. */
+  name: CardName;
   file: string;
   /** Cards in the same row get the same height. */
   row: "summary" | "showcase" | null;
@@ -89,13 +94,16 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
   for (const card of config.cards) {
     switch (card) {
       case "heatmap":
-        cards.push({ file: "heatmap", row: null, render: (extra) => renderHeatmapCard(activity, { ...config.heatmap, ...extra }) });
+        cards.push({ name: card, file: "heatmap", row: null, render: (extra) => renderHeatmapCard(activity, { ...config.heatmap, ...extra }) });
         break;
       case "stats":
-        cards.push({ file: "stats", row: "summary", render: (extra) => renderStatsCard(activity, { ...config.stats, ...extra }) });
+        cards.push({ name: card, file: "stats", row: "summary", render: (extra) => renderStatsCard(activity, { ...config.stats, ...extra }) });
+        break;
+      case "hosts":
+        cards.push({ name: card, file: "hosts", row: "summary", render: (extra) => renderHostSplitCard(activity, { ...config.stats, ...extra }) });
         break;
       case "languages":
-        cards.push({ file: "languages", row: "summary", render: (extra) => renderLanguagesCard(activity, { ...config.languages, ...extra }) });
+        cards.push({ name: card, file: "languages", row: "summary", render: (extra) => renderLanguagesCard(activity, { ...config.languages, ...extra }) });
         break;
       case "wakatime": {
         const { apiKey, apiUrl, range } = config.wakatime;
@@ -104,7 +112,7 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
           break;
         }
         const stats = await (deps.wakatime ?? fetchWakaTime)({ apiKey, apiUrl, range });
-        cards.push({ file: "wakatime", row: "summary", render: (extra) => renderWakaTimeCard(stats, { ...config.wakatime, ...extra }) });
+        cards.push({ name: card, file: "wakatime", row: "summary", render: (extra) => renderWakaTimeCard(stats, { ...config.wakatime, ...extra }) });
         break;
       }
       case "pins":
@@ -120,6 +128,7 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
           const item = await fetch(ref, showcaseOptions);
           const { host, path } = parseRef(ref);
           cards.push({
+            name: card,
             file: `${card === "pins" ? "pin" : "gist"}-${host}-${slug(path)}`,
             row: "showcase",
             render: (extra) => renderShowcaseCard(item, { ...config.showcase, ...extra }),
@@ -152,6 +161,8 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
     }
   }
 
+  if (config.layout.length > 0) outputs.push(...layoutFiles(config, cards, autoTheme, logger));
+
   await mkdir(outputDir, { recursive: true });
   for (const [file, content] of outputs) await writeFile(join(outputDir, file), content);
   const files = outputs.map(([file]) => join(config.outputDir, file));
@@ -163,6 +174,46 @@ export async function run(config: Config, deps: RunDeps): Promise<RunResult> {
     logger.info(committed ? "Committed and pushed the cards." : "Cards unchanged; nothing to commit.");
   }
   return { files, committed };
+}
+
+/**
+ * Lays the cards out as the `layout` input describes: `row-N.svg` per row and
+ * `layout.svg` with every row, all exactly the layout width with even gaps.
+ */
+function layoutFiles(config: Config, cards: Card[], autoTheme: boolean, logger: Logger): [string, string][] {
+  const rows: Card[][] = [];
+  for (const names of config.layout) {
+    const row: Card[] = [];
+    for (const name of names) {
+      const matching = cards.filter((card) => card.name === name);
+      if (matching.length === 0) {
+        logger.info(`Layout: leaving out ${name}, which was not built this run.`);
+        continue;
+      }
+      // pins and gists stand for all of them, two to a row.
+      if (name === "pins" || name === "gists") {
+        if (row.length > 0) rows.push(row.splice(0));
+        for (let i = 0; i < matching.length; i += 2) rows.push(matching.slice(i, i + 2));
+      } else {
+        row.push(...matching);
+      }
+    }
+    if (row.length > 0) rows.push(row);
+  }
+
+  const files: [string, string][] = [];
+  const themes: [string, CardOptions][] = autoTheme
+    ? [["", {}], ["-light", { theme: "light_github" }], ["-dark", { theme: "dark_github" }]]
+    : [["", {}]];
+  for (const [suffix, extra] of themes) {
+    const layout = renderLayout(
+      rows.map((row) => row.map((card) => card.render)),
+      { width: config.layoutWidth, gap: config.layoutGap, extra },
+    );
+    layout.rows.forEach((svg, i) => files.push([`row-${i + 1}${suffix}.svg`, svg]));
+    files.push([`layout${suffix}.svg`, layout.combined]);
+  }
+  return files;
 }
 
 /** `Kingpin-Apps/git-info-combine` → `kingpin-apps-git-info-combine`. */

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { combine, SensitiveNames, svgHeight, type Cache, type CollectOptions, type HostActivity, type ShowcaseItem } from "@git-info-combine/core";
+import { combine, SensitiveNames, svgHeight, svgWidth, type Cache, type CollectOptions, type HostActivity, type ShowcaseItem } from "@git-info-combine/core";
 import { commitAndPush } from "../src/git.ts";
 import { readConfig } from "../src/inputs.ts";
 import { run } from "../src/run.ts";
@@ -43,6 +43,9 @@ describe("run", () => {
       "heatmap-dark.svg",
       "heatmap-light.svg",
       "heatmap.svg",
+      "hosts-dark.svg",
+      "hosts-light.svg",
+      "hosts.svg",
       "languages-dark.svg",
       "languages-light.svg",
       "languages.svg",
@@ -137,6 +140,50 @@ describe("rows", () => {
     expect(seen).toEqual(["k:last_year"]);
     const height = async (file: string) => svgHeight(await readFile(join(workspace, "git-info-combine", file), "utf8"));
     expect(await height("wakatime.svg")).toBe(await height("stats.svg"));
+  });
+});
+
+describe("layout", () => {
+  const item = (title: string): ShowcaseItem => ({
+    kind: "repo",
+    host: "github",
+    title,
+    path: `octo/${title}`,
+    description: "A repo",
+    language: null,
+    stars: 0,
+    forks: 0,
+    archived: false,
+  });
+
+  test("writes rows and a combined image at the layout width; pins go two to a row", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "gic-"));
+    const log = logger();
+    const config = readConfig(
+      (name) =>
+        ({
+          "github-token": "a",
+          commit: "false",
+          cards: "heatmap,stats,languages,hosts,pins",
+          pins: "octo/a\nocto/b\nocto/c",
+          layout: "heatmap\nstats languages\nwakatime hosts\npins",
+        })[name] ?? "",
+    );
+    await run(config, { workspace, logger: log, collect: fakeCollect([]), pin: async (ref) => item(ref.split("/")[1]!) });
+    const read = (file: string) => readFile(join(workspace, "git-info-combine", file), "utf8");
+
+    // heatmap | stats languages | hosts (wakatime was not built) | pins a b | pin c
+    for (const n of [1, 2, 3, 4, 5]) {
+      expect(svgWidth(await read(`row-${n}.svg`))).toBe(800);
+      expect(svgWidth(await read(`row-${n}-dark.svg`))).toBe(800);
+    }
+    await expect(read("row-6.svg")).rejects.toThrow();
+    expect(log.lines).toContain("Layout: leaving out wakatime, which was not built this run.");
+
+    const layout = await read("layout.svg");
+    expect(svgWidth(layout)).toBe(800);
+    const rowHeights = await Promise.all([1, 2, 3, 4, 5].map(async (n) => svgHeight(await read(`row-${n}.svg`))));
+    expect(svgHeight(layout)).toBe(rowHeights.reduce((sum, h) => sum + h, 0) + 4 * 10);
   });
 });
 

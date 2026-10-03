@@ -46,7 +46,7 @@ inputs:
 
   # Output
   cards:
-    description: "Cards to build, comma-separated: heatmap, stats, languages, wakatime, pins, gists, or all."
+    description: "Cards to build, comma-separated: heatmap, stats, languages, hosts, wakatime, pins, gists, or all."
     required: false
     default: all
   output-dir:
@@ -61,6 +61,15 @@ inputs:
     description: Message for the commit.
     required: false
     default: "chore: update git-info-combine cards"
+  layout:
+    description: "Rows of cards to lay out into exact-width images, one row per line, for example: heatmap / stats languages / wakatime hosts / pins. Writes layout.svg (every row) and row-N.svg. pins and gists mean all of them, two to a row."
+    required: false
+  layout-width:
+    description: Width of every layout row in pixels. Default 800.
+    required: false
+  layout-gap:
+    description: Space between cards in the layout, across and down, in pixels. Default 10.
+    required: false
   equal-heights:
     description: Give cards that usually sit side by side the same height (stats, languages and wakatime; pins and gists).
     required: false

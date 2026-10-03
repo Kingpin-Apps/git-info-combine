@@ -43,10 +43,9 @@ export function topLanguages(
   }));
 }
 
-const WIDTH = 300;
-const BAR_WIDTH = WIDTH - 50;
-
 export function renderLanguagesCard(activity: CombinedActivity, options: LanguagesCardOptions = {}): string {
+  const WIDTH = options.width ?? 300;
+  const BAR_WIDTH = WIDTH - 50;
   const layout = options.layout ?? "normal";
   const languages = topLanguages(activity, options.count ?? (layout === "compact" ? 6 : 5), options.hide, options.weighting);
   const top = titleOffset(options);
@@ -65,7 +64,7 @@ export function renderLanguagesCard(activity: CombinedActivity, options: Languag
       return segment;
     });
     const legend = languages.map((language, i) => {
-      const lx = 25 + (i % 2) * 150;
+      const lx = 25 + (i % 2) * (BAR_WIDTH / 2 + 25);
       const ly = 28 + Math.floor(i / 2) * 25;
       return `<circle cx="${lx + 5}" cy="${ly - 4}" r="5" fill="${language.color}"/><text class="small" x="${lx + 15}" y="${ly}">${escapeXml(language.name)} ${language.percent.toFixed(2)}%</text>`;
     });

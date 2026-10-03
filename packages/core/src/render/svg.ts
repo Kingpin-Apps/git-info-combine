@@ -27,6 +27,8 @@ export interface CardOptions extends ColorOverrides {
   customTitle?: string;
   /** Draw the card at least this tall, so cards in a row can match. */
   minHeight?: number;
+  /** Card width in pixels, for fitting cards into a row. Each card has its own default. */
+  width?: number;
 }
 
 interface Palette {
@@ -170,6 +172,11 @@ export function renderFrame(options: FrameOptions): string {
 /** Reads a rendered card's height. */
 export function svgHeight(svg: string): number {
   return Number(svg.match(/<svg[^>]* height="(\d+(?:\.\d+)?)"/)?.[1] ?? 0);
+}
+
+/** Reads a rendered card's width. */
+export function svgWidth(svg: string): number {
+  return Number(svg.match(/<svg[^>]* width="(\d+(?:\.\d+)?)"/)?.[1] ?? 0);
 }
 
 /** Wraps text to lines of at most `width` characters, ending with an ellipsis past `maxLines`. */

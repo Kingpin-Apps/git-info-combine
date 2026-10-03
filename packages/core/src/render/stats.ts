@@ -36,7 +36,7 @@ export function renderStatsCard(activity: CombinedActivity, options: StatsCardOp
   const showRank = !options.hideRank;
   const showHosts = options.showHosts !== false && activity.hosts.length > 0;
 
-  const width = showRank ? 450 : 300;
+  const width = options.width ?? (showRank ? 450 : 300);
   const top = titleOffset(options);
   const rowsHeight = rows.length * LINE_HEIGHT;
   const legendHeight = showHosts ? 30 : 0;

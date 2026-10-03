@@ -8,3 +8,6 @@ export { themes, type Theme } from "./themes.ts";
 export { renderShowcaseCard, type ShowcaseCardOptions } from "./showcase.ts";
 export { svgHeight, wrapText } from "./svg.ts";
 export { renderWakaTimeCard, type WakaTimeCardOptions } from "./wakatime.ts";
+export { renderHostSplitCard, type HostSplitCardOptions } from "./hostsplit.ts";
+export { svgWidth } from "./svg.ts";
+export { renderLayout, type CardRenderer, type Layout, type LayoutOptions } from "./layout.ts";

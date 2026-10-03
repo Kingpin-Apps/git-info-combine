@@ -2,6 +2,7 @@ export const CARD_NAMES = [
   "heatmap",
   "stats",
   "languages",
+  "hosts",
   "wakatime",
   "pins",
   "gists",

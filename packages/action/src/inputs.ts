@@ -30,6 +30,10 @@ export interface Config {
   commitMessage: string;
   /** Give cards that sit in a row the same height. */
   equalHeights: boolean;
+  /** Rows of card names to lay out into exact-width images; empty for no layout. */
+  layout: string[][];
+  layoutWidth: number;
+  layoutGap: number;
   stats: StatsCardOptions;
   languages: LanguagesCardOptions;
   heatmap: HeatmapCardOptions;
@@ -105,6 +109,9 @@ export function readConfig(getInput: GetInput): Config {
     commit: bool("commit", true),
     commitMessage: text("commit-message") ?? "chore: update git-info-combine cards",
     equalHeights: bool("equal-heights", true),
+    layout: parseLayout(getInput("layout")),
+    layoutWidth: number("layout-width") ?? 800,
+    layoutGap: number("layout-gap") ?? 10,
     stats: {
       ...common,
       name: text("name"),
@@ -143,3 +150,20 @@ export function readConfig(getInput: GetInput): Config {
 }
 
 export { CARD_NAMES };
+
+/**
+ * Parses the `layout` input: one row per line, card names separated by spaces
+ * or commas. `pins` and `gists` stand for all of them, two to a row.
+ */
+export function parseLayout(input: string): string[][] {
+  const rows = input
+    .split("\n")
+    .map((line) => line.split(/[\s,]+/).map((name) => name.trim().toLowerCase()).filter(Boolean))
+    .filter((row) => row.length > 0);
+  for (const name of rows.flat()) {
+    if (!(CARD_NAMES as readonly string[]).includes(name)) {
+      throw new Error(`Input layout has an unknown card "${name}". Use ${CARD_NAMES.join(", ")}.`);
+    }
+  }
+  return rows;
+}

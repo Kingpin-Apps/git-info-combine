@@ -6,7 +6,10 @@ const inputs = (values: Record<string, string>) => (name: string) => values[name
 describe("readConfig", () => {
   test("defaults", () => {
     const config = readConfig(inputs({ "github-token": "a" }));
-    expect(config.cards).toEqual(["heatmap", "stats", "languages", "wakatime", "pins", "gists"]);
+    expect(config.cards).toEqual(["heatmap", "stats", "languages", "hosts", "wakatime", "pins", "gists"]);
+    expect(config.layout).toEqual([]);
+    expect(config.layoutWidth).toBe(800);
+    expect(config.layoutGap).toBe(10);
     expect(config.outputDir).toBe("git-info-combine");
     expect(config.commit).toBe(true);
     expect(config.includeOrgRepos).toBe(true);
@@ -44,6 +47,13 @@ describe("readConfig", () => {
     expect(config.includeOrgRepos).toBe(false);
     expect(config.excludeRepos).toEqual(["octo/dotfiles"]);
     expect(config.commit).toBe(false);
+  });
+
+  test("reads the layout, one row per line", () => {
+    const config = readConfig(inputs({ "github-token": "a", layout: "heatmap\n\n stats, languages \nWakaTime hosts\npins", "layout-width": "760" }));
+    expect(config.layout).toEqual([["heatmap"], ["stats", "languages"], ["wakatime", "hosts"], ["pins"]]);
+    expect(config.layoutWidth).toBe(760);
+    expect(() => readConfig(inputs({ "github-token": "a", layout: "heatmap streak" }))).toThrow('unknown card "streak"');
   });
 
   test("rejects bad values with a clear message", () => {

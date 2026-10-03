@@ -15,7 +15,8 @@ export interface HeatmapCardOptions extends CardOptions {
 
 const CELL = 10;
 const STEP = 13;
-const LEFT = 25 + 30;
+/** Space for the weekday labels, left of the grid. */
+const LABELS = 30;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const OPACITY = [0, 0.4, 0.6, 0.8, 1];
 
@@ -54,6 +55,10 @@ export function renderHeatmapCard(activity: CombinedActivity, options: HeatmapCa
 
   const top = titleOffset(options);
   const blockHeight = 15 + 7 * STEP + 10;
+  // A card wider than the grid centres it, labels included.
+  const columns = Math.max(...blocks.map((block) => weeksBetween(sundayOnOrBefore(block.start), block.end)));
+  const natural = 25 + LABELS + columns * STEP + 25;
+  const LEFT = 25 + LABELS + Math.max(0, Math.floor(((options.width ?? 0) - natural) / 2));
   const body: string[] = [];
   let total = 0;
   let width = 0;
@@ -105,13 +110,13 @@ export function renderHeatmapCard(activity: CombinedActivity, options: HeatmapCa
     }
 
     total += blockTotal;
-    width = Math.max(width, LEFT + columns * STEP + 25);
+    width = Math.max(width, options.width ?? 0, LEFT + columns * STEP + 25);
     if (block.label) {
       body.push(`<text class="text bold" x="25" y="${y0 - 6}">${block.label}</text>`);
       body.push(`<text class="small" x="${25 + 45}" y="${y0 - 6}">${formatNumber(blockTotal, "long")} contributions</text>`);
     }
     for (const [row, name] of [[1, "Mon"], [3, "Wed"], [5, "Fri"]] as const) {
-      body.push(`<text class="small" x="25" y="${y0 + 15 + row * STEP + 9}">${name}</text>`);
+      body.push(`<text class="small" x="${LEFT - LABELS}" y="${y0 + 15 + row * STEP + 9}">${name}</text>`);
     }
     body.push(`<path d="${empty.join("")}" fill="var(--text)" fill-opacity="0.12"/>`);
     body.push(...filled);
@@ -159,6 +164,11 @@ function datesBetween(start: DateKey, end: DateKey): DateKey[] {
   const dates: DateKey[] = [];
   for (let date = start; date <= end; date = addDays(date, 1)) dates.push(date);
   return dates;
+}
+
+function weeksBetween(start: DateKey, end: DateKey): number {
+  const days = (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000;
+  return Math.floor(days / 7) + 1;
 }
 
 function sundayOnOrBefore(date: DateKey): DateKey {

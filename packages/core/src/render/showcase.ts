@@ -12,11 +12,12 @@ export interface ShowcaseCardOptions extends CardOptions {
   descriptionLines?: number;
 }
 
-const WIDTH = 400;
-
 /** A card for one pinned repo or project, or one gist or snippet, like GitHub Stats Extended's. */
 export function renderShowcaseCard(item: ShowcaseItem, options: ShowcaseCardOptions = {}): string {
-  const description = wrapText(item.description ?? "No description provided.", 56, options.descriptionLines ?? 3);
+  const WIDTH = options.width ?? 400;
+  // About 6.6 px per character of 12 px text.
+  const lineLength = Math.floor((WIDTH - 50) / 6.6);
+  const description = wrapText(item.description ?? "No description provided.", lineLength, options.descriptionLines ?? 3);
   const badge = item.archived ? "Archived" : null;
   const top = options.hideTitle ? 15 : 0;
 

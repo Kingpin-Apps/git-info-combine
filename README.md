@@ -31,13 +31,35 @@ If most of your work happens on GitLab, in private repos or in company groups, y
 | `heatmap` | Contribution calendar across both hosts, each day split by host colour |
 | `stats` | Stars, commits, PRs/MRs, issues, reviews and repos contributed to, added up, with a rank |
 | `languages` | Top languages across both hosts |
+| `hosts` | How your activity splits between GitHub and GitLab: contributions, commits, PRs/MRs and issues |
 | `wakatime` | Coding time by language from WakaTime (or Wakapi) |
 | `pins` | One card per public repo or project you list in `pins` |
 | `gists` | One card per public gist or snippet you list in `gists` |
 
 Every card is on by default; `wakatime`, `pins` and `gists` are skipped until you set `wakatime-api-key`, `pins` or `gists`. Choose cards with the `cards` input, for example `cards: heatmap,stats,languages`.
 
-Cards that usually sit side by side get the same height (`equal-heights`, on by default): stats, languages and wakatime match each other, and so do pins and gists.
+Cards that usually sit side by side get the same height (`equal-heights`, on by default): stats, languages, hosts and wakatime match each other, and so do pins and gists.
+
+### Layout: rows that line up
+
+Images side by side in a README never quite line up: rows end at different widths, and GitHub spaces them unevenly. The `layout` input has the Action lay the cards out itself:
+
+```yaml
+          layout: |
+            heatmap
+            stats languages
+            wakatime hosts
+            pins
+```
+
+Every row comes out exactly `layout-width` wide (default 800), cards in a row share one height and keep their proportions, and the gap across and down is the same (`layout-gap`, default 10). It writes `layout.svg` with every row, plus `row-1.svg`, `row-2.svg` and so on, each with `-light` and `-dark` versions. `pins` and `gists` mean all of them, two to a row. Use one image for the whole set:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="git-info-combine/layout-dark.svg">
+  <img alt="My activity across GitHub and GitLab" src="git-info-combine/layout-light.svg">
+</picture>
+```
 
 ## Usage
 
@@ -113,7 +135,7 @@ All inputs are optional except at least one token. See [`action.yml`](action.yml
 | Area | Inputs |
 |---|---|
 | Sources | `github-token`, `gitlab-token`, `gitlab-url`, `include-org-repos`, `exclude-repos`, `gitlab-mirrors`, `detect-wordpress`, `wakatime-api-key`, `wakatime-url`, `pins`, `gists` |
-| Output | `cards`, `output-dir`, `commit`, `commit-message`, `equal-heights` |
+| Output | `cards`, `output-dir`, `commit`, `commit-message`, `equal-heights`, `layout`, `layout-width`, `layout-gap` |
 | Look | `theme` (`auto` or any [GitHub Stats Extended theme](https://github.com/stats-organization/github-stats-extended/blob/master/apps/frontend/src/content/docs/docs/customization/themes.md)), `hide-title`, `hide-border`, `border-radius`, `title-color`, `icon-color`, `text-color`, `bg-color`, `border-color`, `github-color`, `gitlab-color` |
 | Stats | `name`, `stats-hide`, `hide-rank`, `show-hosts`, `number-format` |
 | Languages | `languages-layout`, `languages-count`, `languages-hide`, `languages-weighting` |
