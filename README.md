@@ -1,8 +1,28 @@
 # Git-info-combine
 
-A GitHub Action that combines your GitHub and GitLab activity into cards for your profile README. Private work is counted; private repo and project names are never shown.
+A GitHub Action that combines your **GitHub and GitLab** activity into cards for your profile README. Private work is counted; private repo and project names are never shown.
 
-> **Status:** early development. All six cards work.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/heatmap-dark.svg">
+  <img alt="Example heatmap combining GitHub and GitLab contributions" src="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/heatmap-light.svg">
+</picture>
+
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/stats-dark.svg">
+    <img alt="Example stats card" src="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/stats-light.svg">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/languages-dark.svg">
+    <img alt="Example languages card" src="https://raw.githubusercontent.com/KINGH242/KINGH242/main/git-info-combine/languages-light.svg">
+  </picture>
+</p>
+
+*Live example: [github.com/KINGH242](https://github.com/KINGH242).*
+
+## Why
+
+If most of your work happens on GitLab, in private repos or in company groups, your GitHub contribution graph shows only a small part of it. Git-info-combine reads both hosts with your own tokens, inside your own workflow, and draws one honest picture.
 
 ## Cards
 
@@ -19,31 +39,20 @@ Every card is on by default; `wakatime`, `pins` and `gists` are skipped until yo
 
 Cards that usually sit side by side get the same height (`equal-heights`, on by default): stats, languages and wakatime match each other, and so do pins and gists.
 
-Pin and gist files are named after what they show: `pins: Kingpin-Apps/git-info-combine` writes `pin-github-kingpin-apps-git-info-combine.svg`.
-
-## Privacy
-
-- Private repos, projects and their activity are **counted**, but their **names are never written** to the cards or the cache.
-- Tokens stay in your repo's secrets and are only used inside the Action run.
-- The cache (`cache.json`) holds daily counts and opaque ids, nothing else.
-- Pins and gists must be public; private repos, internal projects and secret gists are refused.
-- WakaTime's project names are dropped; only languages and time are used.
-- `exclude-repos` is the one exception you control: your workflow file is public, so naming a private repo there reveals its name.
-
 ## Usage
 
-1. Create the tokens:
-   - **GitHub:** a classic personal access token with `repo`, `read:org` and `read:user`, so private and organisation activity can be read.
+1. **Create the tokens.**
+   - **GitHub:** a classic personal access token with `repo`, `read:org` and `read:user`, so private and organisation activity can be read. The default `GITHUB_TOKEN` cannot read your activity in other repos.
    - **GitLab:** a personal access token with `read_api`.
-2. Add them as repository secrets in your profile repo, for example `GIC_GITHUB_TOKEN` and `GIC_GITLAB_TOKEN`.
-3. Add the workflow:
+2. **Add them as secrets** in your profile repo (the repo named after your username), for example `GIC_GITHUB_TOKEN` and `GIC_GITLAB_TOKEN`.
+3. **Add the workflow:**
 
 ```yaml
 # .github/workflows/git-info-combine.yml in your profile repo
 name: Git-info-combine
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * 1" # Mondays, 03:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -59,9 +68,13 @@ jobs:
           github-token: ${{ secrets.GIC_GITHUB_TOKEN }}
           gitlab-token: ${{ secrets.GIC_GITLAB_TOKEN }}
           # gitlab-url: https://gitlab.example.com  # self-hosted GitLab
+          # pins: |
+          #   your-name/your-repo
+          #   gitlab:your-group/your-project
 ```
 
-4. Show the cards in your README. With the default `auto` theme, a `<picture>` follows GitHub's own light or dark setting:
+4. **Run it once** from the Actions tab (*Run workflow*). It commits the cards to `git-info-combine/` in your repo.
+5. **Show the cards in your README.** With the default `auto` theme, a `<picture>` follows GitHub's own light or dark setting:
 
 ```html
 <picture>
@@ -70,9 +83,47 @@ jobs:
 </picture>
 ```
 
-Or use `git-info-combine/heatmap.svg`, which follows the viewer's system setting.
+Each card has three files: `<card>.svg` (follows the viewer's system setting), `<card>-light.svg` and `<card>-dark.svg`. Pin and gist files are named after what they show: `pins: Kingpin-Apps/git-info-combine` writes `pin-github-kingpin-apps-git-info-combine.svg`.
 
-See [`action.yml`](action.yml) for every input: themes, colours, hidden stats and languages, heatmap range and more.
+The first run reads your whole history and can take a few minutes. Later runs use the cache and only fetch what changed.
+
+## How things are counted
+
+- **Contributions** (the heatmap) are GitHub's own contribution calendar plus GitLab's events, counted the way GitLab's calendar counts them.
+- **Commits** are your commits on each repo's default branch: GitHub's commit contributions, and on GitLab, each project's contributor list matched to all of your GitLab emails and your name.
+- **Languages** count every repo once, split by its languages (`languages-weighting: repo`). GitLab reports only percentages, not bytes, so this keeps both hosts in the same unit. `languages-weighting: size` weighs by size instead, so big repos dominate.
+- **WordPress sites** that bundle WordPress core (at the root, or in `wordpress/`, `public/`, `public_html/` or Bedrock's `web/wp/`) count as one PHP repo: WordPress's own code is not counted as yours. Turn this off with `detect-wordpress: false`.
+- **Mirrors.** A GitLab project whose latest commit matches one of your GitHub repos is a mirror, and is counted once. Name others with `gitlab-mirrors`.
+- **Languages and stars** come from repos you own or are an organisation member of on GitHub (`include-org-repos`), and from projects you maintain on GitLab. Forks are skipped.
+- The **rank** uses [GitHub Stats Extended](https://github.com/stats-organization/github-stats-extended)'s formula on the combined numbers.
+
+## Privacy
+
+- Private repos, projects and their activity are **counted**, but their **names are never written** to the cards, the cache or the logs. A check refuses to write output that contains one.
+- Tokens stay in your repo's secrets and are only used inside the Action run.
+- The cache (`cache.json`) holds daily counts and opaque ids, nothing else. A self-hosted GitLab's address is stored only as a hash.
+- Pins and gists must be public; private repos, internal projects and secret gists are refused.
+- WakaTime's project names are dropped; only languages and time are used.
+- `exclude-repos` and `gitlab-mirrors` are the exceptions you control: your workflow file is public, so naming a private repo there reveals its name.
+
+## Inputs
+
+All inputs are optional except at least one token. See [`action.yml`](action.yml) for the full descriptions.
+
+| Area | Inputs |
+|---|---|
+| Sources | `github-token`, `gitlab-token`, `gitlab-url`, `include-org-repos`, `exclude-repos`, `gitlab-mirrors`, `detect-wordpress`, `wakatime-api-key`, `wakatime-url`, `pins`, `gists` |
+| Output | `cards`, `output-dir`, `commit`, `commit-message`, `equal-heights` |
+| Look | `theme` (`auto` or any [GitHub Stats Extended theme](https://github.com/stats-organization/github-stats-extended/blob/master/apps/frontend/src/content/docs/docs/customization/themes.md)), `hide-title`, `hide-border`, `border-radius`, `title-color`, `icon-color`, `text-color`, `bg-color`, `border-color`, `github-color`, `gitlab-color` |
+| Stats | `name`, `stats-hide`, `hide-rank`, `show-hosts`, `number-format` |
+| Languages | `languages-layout`, `languages-count`, `languages-hide`, `languages-weighting` |
+| Heatmap | `heatmap-range` (`last-year` or `all`), `heatmap-mode` (`hosts` or `single`) |
+| WakaTime | `wakatime-range`, `wakatime-layout`, `wakatime-count`, `wakatime-hide` |
+
+## Good to know
+
+- **Tokens expire.** When your GitHub or GitLab token expires, runs fail. Set a reminder to renew it.
+- **Scheduled workflows pause** after 60 days without activity in a repo. The cards change every run, so their commits normally keep the schedule alive.
 
 ## Development
 
@@ -95,4 +146,4 @@ Themes, the rank formula and card designs come from [GitHub Stats Extended](http
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © Kingpin Apps
