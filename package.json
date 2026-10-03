@@ -1,0 +1,15 @@
+{
+  "name": "git-info-combine",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "bun build packages/action/src/index.ts --target=node --format=esm --minify --outfile=dist/index.js",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}

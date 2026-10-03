@@ -1,0 +1,31 @@
+name: Git-info-combine
+description: Combine GitHub and GitLab activity into profile README cards. Private work is counted; private names are never shown.
+author: Kingpin Apps
+branding:
+  icon: activity
+  color: purple
+inputs:
+  github-token:
+    description: GitHub personal access token for the profile owner. The default GITHUB_TOKEN cannot read activity in other repos.
+    required: false
+  gitlab-token:
+    description: GitLab personal access token with the read_api scope.
+    required: false
+  gitlab-url:
+    description: Base URL of the GitLab instance. Set this for self-hosted GitLab.
+    required: false
+    default: https://gitlab.com
+  wakatime-api-key:
+    description: WakaTime API key, needed only for the wakatime card.
+    required: false
+  cards:
+    description: "Cards to build, comma-separated: heatmap, stats, languages, wakatime, pins, gists, or all."
+    required: false
+    default: all
+  output-dir:
+    description: Folder the SVG cards are written to.
+    required: false
+    default: git-info-combine
+runs:
+  using: node24
+  main: dist/index.js
