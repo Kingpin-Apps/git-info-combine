@@ -2,7 +2,7 @@
 
 A GitHub Action that combines your GitHub and GitLab activity into cards for your profile README. Private work is counted; private repo and project names are never shown.
 
-> **Status:** early development. The heatmap, stats and languages cards work. WakaTime, pins and gists are coming.
+> **Status:** early development. All six cards work.
 
 ## Cards
 
@@ -11,17 +11,23 @@ A GitHub Action that combines your GitHub and GitLab activity into cards for you
 | `heatmap` | Contribution calendar across both hosts, each day split by host colour |
 | `stats` | Stars, commits, PRs/MRs, issues, reviews and repos contributed to, added up, with a rank |
 | `languages` | Top languages across both hosts |
-| `wakatime` | Coding time from WakaTime *(coming)* |
-| `pins` | Public repos and projects you choose *(coming)* |
-| `gists` | Public GitHub gists and GitLab snippets *(coming)* |
+| `wakatime` | Coding time by language from WakaTime (or Wakapi) |
+| `pins` | One card per public repo or project you list in `pins` |
+| `gists` | One card per public gist or snippet you list in `gists` |
 
-Every card is on by default. Choose cards with the `cards` input, for example `cards: heatmap,stats,languages`.
+Every card is on by default; `wakatime`, `pins` and `gists` are skipped until you set `wakatime-api-key`, `pins` or `gists`. Choose cards with the `cards` input, for example `cards: heatmap,stats,languages`.
+
+Cards that usually sit side by side get the same height (`equal-heights`, on by default): stats, languages and wakatime match each other, and so do pins and gists.
+
+Pin and gist files are named after what they show: `pins: Kingpin-Apps/git-info-combine` writes `pin-github-kingpin-apps-git-info-combine.svg`.
 
 ## Privacy
 
 - Private repos, projects and their activity are **counted**, but their **names are never written** to the cards or the cache.
 - Tokens stay in your repo's secrets and are only used inside the Action run.
 - The cache (`cache.json`) holds daily counts and opaque ids, nothing else.
+- Pins and gists must be public; private repos, internal projects and secret gists are refused.
+- WakaTime's project names are dropped; only languages and time are used.
 - `exclude-repos` is the one exception you control: your workflow file is public, so naming a private repo there reveals its name.
 
 ## Usage

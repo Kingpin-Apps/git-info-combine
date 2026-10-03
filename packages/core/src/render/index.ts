@@ -5,3 +5,6 @@ export { calculateRank, type Rank, type RankInput } from "./rank.ts";
 export { renderStatsCard, STAT_NAMES, type StatName, type StatsCardOptions } from "./stats.ts";
 export { escapeXml, formatNumber, hexColor, resolveScheme, type CardOptions, type ColorOverrides } from "./svg.ts";
 export { themes, type Theme } from "./themes.ts";
+export { renderShowcaseCard, type ShowcaseCardOptions } from "./showcase.ts";
+export { svgHeight, wrapText } from "./svg.ts";
+export { renderWakaTimeCard, type WakaTimeCardOptions } from "./wakatime.ts";

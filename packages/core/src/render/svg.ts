@@ -25,6 +25,8 @@ export interface CardOptions extends ColorOverrides {
   hideBorder?: boolean;
   borderRadius?: number;
   customTitle?: string;
+  /** Draw the card at least this tall, so cards in a row can match. */
+  minHeight?: number;
 }
 
 interface Palette {
@@ -130,7 +132,8 @@ export interface FrameOptions extends CardOptions {
 /** The card's background, border, title and colours. The body is drawn below the title. */
 export function renderFrame(options: FrameOptions): string {
   const scheme = resolveScheme(options);
-  const { width, height } = options;
+  const { width } = options;
+  const height = Math.max(options.height, options.minHeight ?? 0);
   const title = options.customTitle ?? options.title;
   const radius = options.borderRadius ?? 4.5;
   const gradient = scheme.gradient
@@ -162,6 +165,32 @@ export function renderFrame(options: FrameOptions): string {
     `<g transform="translate(0 ${titleOffset(options)})">${options.body}</g>`,
     `</svg>`,
   ].join("");
+}
+
+/** Reads a rendered card's height. */
+export function svgHeight(svg: string): number {
+  return Number(svg.match(/<svg[^>]* height="(\d+(?:\.\d+)?)"/)?.[1] ?? 0);
+}
+
+/** Wraps text to lines of at most `width` characters, ending with an ellipsis past `maxLines`. */
+export function wrapText(text: string, width: number, maxLines: number): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    if (line && (line + " " + word).length > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length > maxLines) {
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = `${kept[maxLines - 1]!.slice(0, width - 1).trimEnd()}…`;
+    return kept;
+  }
+  return lines.map((l) => (l.length > width ? `${l.slice(0, width - 1)}…` : l));
 }
 
 /** Height a card's title takes, so cards can size themselves. */

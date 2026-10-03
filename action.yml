@@ -25,7 +25,16 @@ inputs:
     description: Repos or projects (name or owner/name) to leave out of languages and stars. This file is public, so naming a private repo here reveals its name.
     required: false
   wakatime-api-key:
-    description: WakaTime API key, needed only for the wakatime card.
+    description: WakaTime API key, needed only for the wakatime card. Only languages are used; project names are dropped.
+    required: false
+  wakatime-url:
+    description: WakaTime API base. Set it for Wakapi or another compatible server.
+    required: false
+  pins:
+    description: "Public repos to pin, one card each: owner/repo or github:owner/repo, gitlab:group/project. Private ones are refused."
+    required: false
+  gists:
+    description: "Public gists to show, one card each: github:<gist id> (your own gists) or gitlab:<snippet id>. Secret ones are refused."
     required: false
 
   # Output
@@ -45,6 +54,10 @@ inputs:
     description: Message for the commit.
     required: false
     default: "chore: update git-info-combine cards"
+  equal-heights:
+    description: Give cards that usually sit side by side the same height (stats, languages and wakatime; pins and gists).
+    required: false
+    default: "true"
 
   # Look, for every card
   theme:
@@ -116,6 +129,20 @@ inputs:
     required: false
   heatmap-mode:
     description: hosts (each day split by host colour) or single (one colour).
+    required: false
+
+  # WakaTime card
+  wakatime-range:
+    description: last_7_days, last_30_days, last_6_months, last_year or all_time.
+    required: false
+  wakatime-layout:
+    description: normal or compact.
+    required: false
+  wakatime-count:
+    description: How many languages to show. Default 6.
+    required: false
+  wakatime-hide:
+    description: Languages to leave out, comma-separated.
     required: false
 
 outputs:

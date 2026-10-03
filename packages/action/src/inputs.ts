@@ -8,6 +8,10 @@ import {
   type LanguagesCardOptions,
   type StatName,
   type StatsCardOptions,
+  type ShowcaseCardOptions,
+  type WakaTimeCardOptions,
+  type WakaTimeRange,
+  WAKATIME_RANGES,
 } from "@git-info-combine/core";
 
 export type GetInput = (name: string) => string;
@@ -22,9 +26,15 @@ export interface Config {
   outputDir: string;
   commit: boolean;
   commitMessage: string;
+  /** Give cards that sit in a row the same height. */
+  equalHeights: boolean;
   stats: StatsCardOptions;
   languages: LanguagesCardOptions;
   heatmap: HeatmapCardOptions;
+  wakatime: WakaTimeCardOptions & { apiKey?: string; apiUrl?: string; range: WakaTimeRange };
+  pins: string[];
+  gists: string[];
+  showcase: ShowcaseCardOptions;
 }
 
 /** Reads the Action's inputs. Every input is optional except a token. */
@@ -90,6 +100,7 @@ export function readConfig(getInput: GetInput): Config {
     outputDir: text("output-dir") ?? "git-info-combine",
     commit: bool("commit", true),
     commitMessage: text("commit-message") ?? "chore: update git-info-combine cards",
+    equalHeights: bool("equal-heights", true),
     stats: {
       ...common,
       name: text("name"),
@@ -111,6 +122,18 @@ export function readConfig(getInput: GetInput): Config {
       mode: choice("heatmap-mode", ["hosts", "single"] as const),
       hostColors,
     },
+    wakatime: {
+      ...common,
+      apiKey: text("wakatime-api-key"),
+      apiUrl: text("wakatime-url"),
+      range: choice("wakatime-range", WAKATIME_RANGES) ?? "last_7_days",
+      layout: choice("wakatime-layout", ["normal", "compact"] as const),
+      count: number("wakatime-count"),
+      hide: list("wakatime-hide"),
+    },
+    pins: list("pins"),
+    gists: list("gists"),
+    showcase: { ...common, showHost: bool("show-hosts", true), hostColors },
   };
 }
 

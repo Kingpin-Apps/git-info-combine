@@ -7,3 +7,5 @@ export { HttpError } from "./http.ts";
 export * from "./model.ts";
 export { opaqueId, SensitiveNames } from "./privacy.ts";
 export * from "./render/index.ts";
+export { fetchGist, fetchPin, parseRef, type ShowcaseItem, type ShowcaseOptions } from "./showcase.ts";
+export { fetchWakaTime, WAKATIME_RANGES, type WakaTimeOptions, type WakaTimeRange, type WakaTimeStats } from "./wakatime.ts";

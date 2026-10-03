@@ -40,7 +40,7 @@ export function renderStatsCard(activity: CombinedActivity, options: StatsCardOp
   const top = titleOffset(options);
   const rowsHeight = rows.length * LINE_HEIGHT;
   const legendHeight = showHosts ? 30 : 0;
-  const height = Math.max(top + rowsHeight + legendHeight, showRank ? 175 : 0);
+  const height = Math.max(top + rowsHeight + legendHeight, showRank ? 175 : 0, options.minHeight ?? 0);
 
   const body: string[] = [];
   rows.forEach((stat, i) => {

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { combine, SensitiveNames, type Cache, type CollectOptions, type HostActivity } from "@git-info-combine/core";
+import { combine, SensitiveNames, svgHeight, type Cache, type CollectOptions, type HostActivity, type ShowcaseItem } from "@git-info-combine/core";
 import { commitAndPush } from "../src/git.ts";
 import { readConfig } from "../src/inputs.ts";
 import { run } from "../src/run.ts";
@@ -51,7 +51,8 @@ describe("run", () => {
       "stats.svg",
     ]);
     expect(result.committed).toBe(false);
-    expect(log.lines).toContain("warning: The wakatime card is not available yet; skipping it.");
+    expect(log.lines).toContain("Skipping the wakatime card: set wakatime-api-key to show it.");
+    expect(log.lines).toContain("Skipping the pins cards: list some in the pins input to show them.");
     expect(await readFile(join(workspace, "git-info-combine/stats-dark.svg"), "utf8")).toContain("--bg:#0d1117");
   });
 
@@ -74,6 +75,68 @@ describe("run", () => {
     expect(seen[0]!.cache).toEqual({ version: 1, github: { login: "octo", years: {} } });
     expect(seen[0]!.excludeRepos).toEqual(["x/y"]);
     expect(seen[0]!.includeOrgRepos).toBe(true);
+  });
+});
+
+describe("rows", () => {
+  const item = (title: string, description: string): ShowcaseItem => ({
+    kind: "repo",
+    host: "github",
+    title,
+    path: `octo/${title}`,
+    description,
+    language: null,
+    stars: 0,
+    forks: 0,
+    archived: false,
+  });
+
+  test("cards in a row get the same height, and pins are named after their repo", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "gic-"));
+    const config = readConfig(
+      (name) =>
+        ({ "github-token": "a", commit: "false", theme: "radical", cards: "stats,languages,pins", pins: "octo/short\nOcto/Long.Name" })[name] ?? "",
+    );
+    await run(config, {
+      workspace,
+      logger: logger(),
+      collect: fakeCollect([]),
+      pin: async (ref) => (ref === "octo/short" ? item("short", "Brief") : item("long", "word ".repeat(40))),
+    });
+    const height = async (file: string) => svgHeight(await readFile(join(workspace, "git-info-combine", file), "utf8"));
+    expect(await height("stats.svg")).toBe(await height("languages.svg"));
+    expect(await height("pin-github-octo-short.svg")).toBe(await height("pin-github-octo-long-name.svg"));
+    expect(await height("pin-github-octo-short.svg")).not.toBe(await height("stats.svg"));
+  });
+
+  test("equal-heights can be turned off", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "gic-"));
+    const config = readConfig(
+      (name) => ({ "github-token": "a", commit: "false", theme: "radical", cards: "stats,languages", "equal-heights": "false" })[name] ?? "",
+    );
+    await run(config, { workspace, logger: logger(), collect: fakeCollect([]) });
+    const height = async (file: string) => svgHeight(await readFile(join(workspace, "git-info-combine", file), "utf8"));
+    expect(await height("stats.svg")).not.toBe(await height("languages.svg"));
+  });
+
+  test("wakatime is fetched with the key and joins the summary row", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "gic-"));
+    const seen: string[] = [];
+    const config = readConfig(
+      (name) => ({ "github-token": "a", commit: "false", theme: "radical", cards: "stats,wakatime", "wakatime-api-key": "k", "wakatime-range": "last_year" })[name] ?? "",
+    );
+    await run(config, {
+      workspace,
+      logger: logger(),
+      collect: fakeCollect([]),
+      wakatime: async (options) => {
+        seen.push(`${options.apiKey}:${options.range}`);
+        return { range: "last_year", total: "1 hr", ready: true, languages: [{ name: "Swift", percent: 100, text: "1 hr" }] };
+      },
+    });
+    expect(seen).toEqual(["k:last_year"]);
+    const height = async (file: string) => svgHeight(await readFile(join(workspace, "git-info-combine", file), "utf8"));
+    expect(await height("wakatime.svg")).toBe(await height("stats.svg"));
   });
 });
 
