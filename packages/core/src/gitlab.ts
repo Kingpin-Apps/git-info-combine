@@ -1,6 +1,6 @@
 import { request, type HttpOptions } from "./http.ts";
 import { addDays, emptyTotals, toDateKey, type DateKey, type HostActivity, type LanguageStat } from "./model.ts";
-import { opaqueId, SensitiveNames } from "./privacy.ts";
+import { isExcluded, opaqueId, SensitiveNames } from "./privacy.ts";
 
 export interface GitLabDay {
   contributions: number;
@@ -31,6 +31,8 @@ export interface GitLabOptions extends HttpOptions {
   baseUrl?: string;
   now?: Date;
   cache?: GitLabCache;
+  /** Project names or `namespace/name` paths to leave out of languages and stars. */
+  excludeRepos?: string[];
   /** Size used for a project whose repository size is unknown. */
   fallbackProjectSize?: number;
 }
@@ -127,6 +129,7 @@ export async function fetchGitLab(options: GitLabOptions): Promise<GitLabResult>
   })) {
     // Forks are skipped, as on GitHub: their stars and code belong to the upstream project.
     if (project.forked_from_project) continue;
+    if (isExcluded(options.excludeRepos, project.name, project.path, project.path_with_namespace)) continue;
     if (project.visibility === "public") {
       repos.public++;
     } else {

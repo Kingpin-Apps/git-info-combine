@@ -9,7 +9,9 @@
     "build": "bun build packages/action/src/index.ts --target=node --format=esm --minify --outfile=dist/index.js",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "fetch": "bun scripts/fetch.ts"
+    "fetch": "bun scripts/fetch.ts",
+    "render": "bun scripts/render.ts",
+    "preview": "bun scripts/preview.ts"
   },
   "devDependencies": {
     "@git-info-combine/core": "workspace:*",

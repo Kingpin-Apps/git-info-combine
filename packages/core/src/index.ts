@@ -6,3 +6,4 @@ export { fetchGitLab, type GitLabCache, type GitLabOptions } from "./gitlab.ts";
 export { HttpError } from "./http.ts";
 export * from "./model.ts";
 export { opaqueId, SensitiveNames } from "./privacy.ts";
+export * from "./render/index.ts";

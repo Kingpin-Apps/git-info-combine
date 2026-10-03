@@ -1,6 +1,6 @@
 import { request, type HttpOptions } from "./http.ts";
 import { emptyTotals, type DateKey, type HostActivity, type LanguageStat } from "./model.ts";
-import { SensitiveNames } from "./privacy.ts";
+import { isExcluded, SensitiveNames } from "./privacy.ts";
 
 export interface GitHubYear {
   /** True once the year had ended when it was fetched, so it never changes again. */
@@ -28,6 +28,8 @@ export interface GitHubOptions extends HttpOptions {
    * stars, not only repos the user owns. Defaults to true.
    */
   includeOrgRepos?: boolean;
+  /** Repo names or `owner/name` paths to leave out of languages and stars. */
+  excludeRepos?: string[];
 }
 
 export interface GitHubResult {
@@ -152,6 +154,7 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
     const data: ReposData = await graphql<ReposData>(REPOS_QUERY, { after, affiliations });
     const page = data.viewer.repositories;
     for (const repo of page.nodes) {
+      if (isExcluded(options.excludeRepos, repo.name, repo.nameWithOwner)) continue;
       if (repo.isPrivate) {
         sensitive.add(repo.name, repo.nameWithOwner);
         repos.private++;

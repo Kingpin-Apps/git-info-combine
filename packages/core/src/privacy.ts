@@ -1,5 +1,12 @@
 import { createHash } from "node:crypto";
 
+/** True if any of a repo's names or paths is in the exclude list (case-insensitive). */
+export function isExcluded(exclude: string[] | undefined, ...names: string[]): boolean {
+  if (!exclude?.length) return false;
+  const wanted = new Set(exclude.map((name) => name.trim().toLowerCase()));
+  return names.some((name) => wanted.has(name.toLowerCase()));
+}
+
 /** A stable id for a repo or project that does not reveal its name. */
 export function opaqueId(host: string, id: string | number): string {
   return createHash("sha256").update(`${host}:${id}`).digest("hex").slice(0, 16);

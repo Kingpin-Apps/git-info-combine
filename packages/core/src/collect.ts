@@ -19,6 +19,8 @@ export interface CollectOptions extends HttpOptions {
   gitlabUrl?: string;
   /** See GitHubOptions.includeOrgRepos. */
   includeOrgRepos?: boolean;
+  /** Repos or projects to leave out of languages and stars, on any host. */
+  excludeRepos?: string[];
   cache?: Cache;
   now?: Date;
 }

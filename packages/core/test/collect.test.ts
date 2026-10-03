@@ -42,6 +42,18 @@ describe("collect", () => {
     expect(second.activity).toEqual(first.activity);
   });
 
+  test("excluded repos and projects leave languages and stars", async () => {
+    const { activity } = await collect({
+      githubToken: "a",
+      gitlabToken: "b",
+      fetch: route(),
+      now: NOW,
+      excludeRepos: ["octo/dotfiles", "OPEN-WIDGET"],
+    });
+    expect(activity.totals.stars).toBe(1);
+    expect(Object.keys(activity.languages).sort()).toEqual(["CSS", "Swift", "TypeScript"]);
+  });
+
   test("needs at least one token", async () => {
     await expect(collect({ fetch: route(), now: NOW })).rejects.toThrow("Set at least one of github-token and gitlab-token.");
   });
