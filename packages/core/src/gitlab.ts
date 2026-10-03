@@ -21,6 +21,8 @@ export interface GitLabDay {
 
 /** What one project adds, reused until the project's last activity changes. */
 export interface GitLabProjectStats {
+  /** How the stats were worked out; a newer method fetches them again. */
+  version?: number;
   /** The project's `last_activity_at` when these were fetched. */
   activity: string;
   /** The user's commits on the default branch, from the contributor list. */
@@ -110,15 +112,22 @@ interface GitLabProject {
   empty_repo?: boolean;
   forked_from_project?: unknown;
   statistics?: { repository_size?: number };
-  permissions?: {
-    project_access?: { access_level: number } | null;
-    group_access?: { access_level: number } | null;
-  };
 }
+
+/** Bump when the way project stats are worked out changes, so cached ones are fetched again. */
+const PROJECT_STATS_VERSION = 2;
 
 /** Events that are not contributions. Everything else counts, as on GitLab's own calendar. */
 const IGNORED_ACTIONS = new Set(["joined", "left", "expired", "deleted", "destroyed"]);
-const MAINTAINER = 40;
+
+/** Where a site repo keeps WordPress core: at the root, or in a common subfolder (Bedrock uses web/wp). */
+export const WORDPRESS_MARKERS = [
+  "wp-includes/version.php",
+  "wordpress/wp-includes/version.php",
+  "public/wp-includes/version.php",
+  "public_html/wp-includes/version.php",
+  "web/wp/wp-includes/version.php",
+];
 
 export async function fetchGitLab(options: GitLabOptions): Promise<GitLabResult> {
   const baseUrl = (options.baseUrl ?? "https://gitlab.com").replace(/\/+$/, "");
@@ -155,6 +164,14 @@ export async function fetchGitLab(options: GitLabOptions): Promise<GitLabResult>
   const detectWordPress = options.detectWordPress !== false;
   const manualMirrors = new Set((options.mirrors ?? []).map((path) => path.trim().toLowerCase()));
 
+  // Languages and stars come from projects the user maintains, as on GitHub, where
+  // they come from repos the user owns. GitLab's own filter resolves inherited
+  // group access, which the per-project permissions field does not.
+  const maintained = new Set<number>();
+  for await (const project of paginate<{ id: number }>(get, "/projects", { membership: "true", min_access_level: "40", simple: "true" })) {
+    maintained.add(project.id);
+  }
+
   // Projects first: they decide which pushes are mirrors and must not count twice.
   const projectStats: Record<string, GitLabProjectStats> = {};
   const mirroredIds = new Set<number>();
@@ -177,7 +194,7 @@ export async function fetchGitLab(options: GitLabOptions): Promise<GitLabResult>
     const id = opaqueId("gitlab", project.id);
     const previous = cached?.projectStats?.[id];
     const stats =
-      previous && previous.activity === project.last_activity_at
+      previous && previous.activity === project.last_activity_at && previous.version === PROJECT_STATS_VERSION
         ? previous
         : await projectStatsFor(project, { tryGet, emails, name: user.name, detectWordPress, fallback: options.fallbackProjectSize });
     projectStats[id] = stats;
@@ -191,8 +208,7 @@ export async function fetchGitLab(options: GitLabOptions): Promise<GitLabResult>
     }
 
     commits += stats.commits;
-    const access = Math.max(project.permissions?.project_access?.access_level ?? 0, project.permissions?.group_access?.access_level ?? 0);
-    if (access < MAINTAINER && project.permissions) continue;
+    if (!maintained.has(project.id)) continue;
     if (isExcluded(options.excludeRepos, project.name, project.path, project.path_with_namespace)) continue;
 
     if (project.visibility === "public") repos.public++;
@@ -281,6 +297,7 @@ interface StatsContext {
 async function projectStatsFor(project: GitLabProject, context: StatsContext): Promise<GitLabProjectStats> {
   const base = `/projects/${project.id}`;
   const stats: GitLabProjectStats = {
+    version: PROJECT_STATS_VERSION,
     activity: project.last_activity_at,
     commits: 0,
     head: null,
@@ -310,9 +327,13 @@ async function projectStatsFor(project: GitLabProject, context: StatsContext): P
 
   stats.languages = (await context.tryGet<Record<string, number>>(`${base}/languages`))?.body ?? {};
   if (context.detectWordPress && "PHP" in stats.languages) {
-    const file = encodeURIComponent("wp-includes/version.php");
-    stats.wordpress =
-      (await context.tryGet(`${base}/repository/files/${file}?ref=${encodeURIComponent(project.default_branch)}`, "HEAD")) !== null;
+    for (const marker of WORDPRESS_MARKERS) {
+      const path = `${base}/repository/files/${encodeURIComponent(marker)}?ref=${encodeURIComponent(project.default_branch)}`;
+      if ((await context.tryGet(path, "HEAD")) !== null) {
+        stats.wordpress = true;
+        break;
+      }
+    }
   }
   return stats;
 }

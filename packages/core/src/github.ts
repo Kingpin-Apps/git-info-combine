@@ -77,6 +77,10 @@ const REPOS_QUERY = `query ($after: String, $affiliations: [RepositoryAffiliatio
         stargazerCount
         defaultBranchRef { target { oid } }
         wordpress: object(expression: "HEAD:wp-includes/version.php") { id }
+        wordpressInFolder: object(expression: "HEAD:wordpress/wp-includes/version.php") { id }
+        wordpressInPublic: object(expression: "HEAD:public/wp-includes/version.php") { id }
+        wordpressInPublicHtml: object(expression: "HEAD:public_html/wp-includes/version.php") { id }
+        wordpressInBedrock: object(expression: "HEAD:web/wp/wp-includes/version.php") { id }
         languages(first: 20, orderBy: { field: SIZE, direction: DESC }) {
           edges { size node { name color } }
         }
@@ -120,6 +124,10 @@ interface ReposData {
         stargazerCount: number;
         defaultBranchRef: { target: { oid: string } | null } | null;
         wordpress: { id: string } | null;
+        wordpressInFolder?: { id: string } | null;
+        wordpressInPublic?: { id: string } | null;
+        wordpressInPublicHtml?: { id: string } | null;
+        wordpressInBedrock?: { id: string } | null;
         languages: { edges: { size: number; node: { name: string; color: string | null } }[] };
       }[];
     };
@@ -176,7 +184,8 @@ export async function fetchGitHub(options: GitHubOptions): Promise<GitHubResult>
       addRepoLanguages(
         languages,
         Object.fromEntries(repo.languages.edges.map(({ size, node }) => [node.name, { size, color: node.color }])),
-        options.detectWordPress !== false && Boolean(repo.wordpress),
+        options.detectWordPress !== false &&
+          Boolean(repo.wordpress || repo.wordpressInFolder || repo.wordpressInPublic || repo.wordpressInPublicHtml || repo.wordpressInBedrock),
       );
     }
     after = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;

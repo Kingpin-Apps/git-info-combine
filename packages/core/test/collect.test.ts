@@ -44,7 +44,7 @@ describe("collect", () => {
       now: NOW,
     });
     expect(result.mirrored).toBe(1);
-    expect(result.activity.hosts[1]!.totals.commits).toBe(12);
+    expect(result.activity.hosts[1]!.totals.commits).toBe(16);
   });
 
   test("the cache round-trips", async () => {

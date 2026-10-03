@@ -114,7 +114,8 @@ export const GITLAB_EVENTS = [
   { action_name: "commented on", target_type: "Note", created_at: "2026-10-02T09:30:00Z", project_id: 2, note: { noteable_type: "Issue" } },
 ];
 
-const maintainer = { project_access: { access_level: 40 }, group_access: null };
+/** Projects the user can push to but does not maintain: their commits count, their languages and stars do not. */
+const DEVELOPER_ONLY = new Set([5]);
 const ACTIVE = "2026-10-01T00:00:00Z";
 
 export const GITLAB_PROJECTS = [
@@ -128,7 +129,6 @@ export const GITLAB_PROJECTS = [
     star_count: 1,
     default_branch: "main",
     last_activity_at: ACTIVE,
-    permissions: maintainer,
     statistics: { repository_size: 10_000 },
   },
   {
@@ -141,7 +141,6 @@ export const GITLAB_PROJECTS = [
     star_count: 4,
     default_branch: "main",
     last_activity_at: ACTIVE,
-    permissions: maintainer,
     statistics: { repository_size: 2_000 },
   },
   {
@@ -154,7 +153,6 @@ export const GITLAB_PROJECTS = [
     star_count: 100,
     default_branch: "main",
     last_activity_at: ACTIVE,
-    permissions: maintainer,
     forked_from_project: { id: 99 },
   },
   {
@@ -167,8 +165,19 @@ export const GITLAB_PROJECTS = [
     star_count: 2,
     default_branch: "main",
     last_activity_at: ACTIVE,
-    permissions: maintainer,
     statistics: { repository_size: 500_000_000 },
+  },
+  {
+    id: 5,
+    name: "team-tool",
+    path: "team-tool",
+    path_with_namespace: "octo/team-tool",
+    name_with_namespace: "octo / team-tool",
+    visibility: "public",
+    star_count: 9,
+    default_branch: "main",
+    last_activity_at: ACTIVE,
+    statistics: { repository_size: 1_000 },
   },
 ];
 
@@ -179,14 +188,16 @@ const GITLAB_CONTRIBUTORS: Record<string, { name: string; email: string; commits
   ],
   "2": [{ name: "Octo C.", email: "OCTO@work.example", commits: 5 }],
   "4": [{ name: "Octo Cat", email: "old@laptop.local", commits: 7 }],
+  "5": [{ name: "Octo Cat", email: "octo@example.com", commits: 4 }],
 };
 
-const GITLAB_HEADS: Record<string, string> = { "1": "aaa111", "2": "bbb222", "4": "ddd444" };
+const GITLAB_HEADS: Record<string, string> = { "1": "aaa111", "2": "bbb222", "4": "ddd444", "5": "fff666" };
 
 const GITLAB_LANGUAGES: Record<string, Record<string, number>> = {
   "1": { TypeScript: 75, CSS: 25 },
   "2": { Python: 100 },
   "4": { PHP: 70, JavaScript: 20, CSS: 10 },
+  "5": { Go: 100 },
 };
 
 /** A GitLab instance at `baseUrl` that serves events in pages of `pageSize`. */
@@ -208,7 +219,11 @@ export function gitlabRoute(baseUrl = "https://gitlab.com", events = GITLAB_EVEN
       return json(items, { "x-next-page": hasNext ? String(page + 1) : "" });
     }
 
-    if (path === "/projects") return json(GITLAB_PROJECTS, { "x-next-page": "" });
+    if (path === "/projects") {
+      const maintained = call.url.searchParams.get("min_access_level") === "40";
+      const projects = maintained ? GITLAB_PROJECTS.filter((p) => !DEVELOPER_ONLY.has(p.id)) : GITLAB_PROJECTS;
+      return json(projects, { "x-next-page": "" });
+    }
 
     const languages = path.match(/^\/projects\/(\d+)\/languages$/);
     if (languages) return json(GITLAB_LANGUAGES[languages[1]!] ?? {});
@@ -216,8 +231,9 @@ export function gitlabRoute(baseUrl = "https://gitlab.com", events = GITLAB_EVEN
     if (contributors) return json(GITLAB_CONTRIBUTORS[contributors[1]!] ?? [], { "x-next-page": "" });
     const commits = path.match(/^\/projects\/(\d+)\/repository\/commits$/);
     if (commits) return json([{ id: GITLAB_HEADS[commits[1]!] }]);
-    const file = path.match(/^\/projects\/(\d+)\/repository\/files\/wp-includes%2Fversion\.php$/);
-    if (file) return new Response(null, { status: file[1] === "4" ? 200 : 404 });
+    // Project 4 keeps WordPress in a public/ folder.
+    const file = path.match(/^\/projects\/(\d+)\/repository\/files\/(.+)$/);
+    if (file) return new Response(null, { status: file[1] === "4" && file[2] === "public%2Fwp-includes%2Fversion.php" ? 200 : 404 });
     return undefined;
   };
 }

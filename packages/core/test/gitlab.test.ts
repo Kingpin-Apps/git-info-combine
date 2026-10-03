@@ -16,12 +16,13 @@ describe("fetchGitLab", () => {
     expect(activity.totals).toEqual({
       contributions: 7,
       // The user's commits on default branches, matched by any of their emails or their name:
-      // 12 in project 1 (not the other contributor's 50), 5 in project 2, 7 in the WordPress site.
-      commits: 24,
+      // 12 in project 1 (not the other contributor's 50), 5 in project 2, 7 in the WordPress
+      // site, and 4 in a project they push to but do not maintain.
+      commits: 28,
       pullRequests: 1,
       issues: 1,
       reviews: 2, // an approval and a merge request comment; the issue comment is not a review
-      stars: 7, // the fork's 100 stars belong upstream
+      stars: 7, // the fork's 100 stars belong upstream; the unmaintained project's 9 are not the user's
       followers: 2,
       contributedTo: 2, // the joined project is not a contribution
     });
@@ -41,6 +42,14 @@ describe("fetchGitLab", () => {
     });
   });
 
+  test("WordPress is found in common subfolders too, and only PHP projects are checked", async () => {
+    const { fetch, calls } = mockFetch(gitlabRoute());
+    await fetchGitLab({ token: "t", fetch, now: NOW });
+    const checked = calls.filter((call) => call.url.pathname.includes("/repository/files/"));
+    expect(new Set(checked.map((call) => call.url.pathname.split("/")[4]))).toEqual(new Set(["4"]));
+    expect(checked.every((call) => call.method === "HEAD")).toBe(true);
+  });
+
   test("WordPress detection can be turned off", async () => {
     const { fetch } = mockFetch(gitlabRoute());
     const { activity } = await fetchGitLab({ token: "t", fetch, now: NOW, detectWordPress: false });
@@ -58,7 +67,7 @@ describe("fetchGitLab", () => {
     });
     expect(mirrored).toBe(1);
     // Project 1's commits, stars, languages and pushes already count on GitHub.
-    expect(activity.totals.commits).toBe(12);
+    expect(activity.totals.commits).toBe(16);
     expect(activity.totals.stars).toBe(6);
     expect(activity.languages.TypeScript).toBeUndefined();
     expect(activity.repos).toEqual({ public: 1, private: 1 });
@@ -70,7 +79,7 @@ describe("fetchGitLab", () => {
     const { fetch } = mockFetch(gitlabRoute());
     const { mirrored, activity } = await fetchGitLab({ token: "t", fetch, now: NOW, mirrors: ["Acme-Corp/Client-Portal-X"] });
     expect(mirrored).toBe(1);
-    expect(activity.totals.commits).toBe(12);
+    expect(activity.totals.commits).toBe(16);
   });
 
   test("project stats are reused until the project changes", async () => {
@@ -80,6 +89,12 @@ describe("fetchGitLab", () => {
     expect(calls.filter((call) => path(call).includes("/repository/"))).toHaveLength(0);
     expect(calls.filter((call) => path(call).endsWith("/languages"))).toHaveLength(0);
     expect(second.activity).toEqual(first.activity);
+
+    const outdated = structuredClone(first.cache);
+    for (const stats of Object.values(outdated.projectStats!)) stats.version = 1;
+    const refetch = mockFetch(gitlabRoute());
+    await fetchGitLab({ token: "t", fetch: refetch.fetch, now: NOW, cache: outdated });
+    expect(refetch.calls.filter((call) => path(call).includes("/repository/contributors"))).toHaveLength(4);
 
     const stale = structuredClone(first.cache);
     stale.projectStats![opaqueId("gitlab", 2)]!.activity = "2020-01-01T00:00:00Z";
